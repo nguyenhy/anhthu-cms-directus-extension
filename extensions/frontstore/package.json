@@ -20,7 +20,7 @@
 	},
 	"scripts": {
 		"build": "directus-extension build",
-		"dev": "directus-extension build -w --no-minify",
+		"dev": "CHOKIDAR_USEPOLLING=true directus-extension build -w --no-minify",
 		"link": "directus-extension link",
 		"validate": "directus-extension validate"
 	},
