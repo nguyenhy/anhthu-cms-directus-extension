@@ -1,0 +1,35 @@
+{
+	"name": "webhook",
+	"description": "Webhook extension of cms",
+	"icon": "extension",
+	"version": "1.0.0",
+	"keywords": [
+		"directus",
+		"directus-extension",
+		"directus-extension-hook"
+	],
+	"type": "module",
+	"files": [
+		"dist"
+	],
+	"directus:extension": {
+		"type": "hook",
+		"path": "dist/index.js",
+		"source": "src/index.ts",
+		"host": "^10.10.0"
+	},
+	"scripts": {
+		"build": "directus-extension build",
+		"dev": "CHOKIDAR_USEPOLLING=true directus-extension build -w --no-minify",
+		"link": "directus-extension link",
+		"validate": "directus-extension validate"
+	},
+	"devDependencies": {
+		"@directus/extensions-sdk": "18.0.0",
+		"@types/node": "^26.0.0",
+		"typescript": "^6.0.3"
+	},
+	"dependencies": {
+		"resend": "^6.14.0"
+	}
+}
