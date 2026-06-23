@@ -76,10 +76,6 @@ export default defineEndpoint(async (router, context) => {
       return res.status(400).send();
     }
 
-    const subtotal = parseFloat(template.product.price);
-    const discount = 0;
-    const total = subtotal >= discount ? subtotal - discount : 0;
-
     context.logger.info(template);
 
     const orderSv = new ItemsService("order", {
