@@ -1,6 +1,6 @@
 {
 	"name": "frontstore",
-	"description": "Please enter a description for your extension",
+	"description": "Endpoint extension of cms as frontstore api",
 	"icon": "extension",
 	"version": "1.0.0",
 	"keywords": [
