@@ -28,7 +28,7 @@ export default defineHook((register, context) => {
     if (meta.collection === "buyer") {
       logger.info([logId, `[frontstore_hook] ${meta.collection}.create`]);
       try {
-        const id = meta.keys[0];
+        const id = meta.key;
         if (!id) {
           logger.error([logId, "[frontstore_hook] keys.id"]);
           return;
@@ -59,7 +59,7 @@ export default defineHook((register, context) => {
     if (meta.collection === "buyer") {
       logger.info([logId, `[frontstore_hook] ${meta.collection}.update`]);
       try {
-        const id = meta.keys[0];
+        const id = meta.keys?.[0];
         if (!id) {
           logger.info([logId, "keys.id"]);
           return;
