@@ -26,11 +26,11 @@ export default defineHook((register, context) => {
     const logId = randomUUID();
 
     if (meta.collection === "buyer") {
-      logger.info([logId, `[frontstore_hook] ${meta.collection}.create`]);
+      logger.info([logId, `[frontstore_hook] items.create`, meta.collection]);
       try {
         const id = meta.key;
         if (!id) {
-          logger.error([logId, "[frontstore_hook] keys.id"]);
+          logger.error([logId, "meta.key"]);
           return;
         }
 
@@ -57,11 +57,11 @@ export default defineHook((register, context) => {
   action("items.update", async (meta, ctx) => {
     const logId = randomUUID();
     if (meta.collection === "buyer") {
-      logger.info([logId, `[frontstore_hook] ${meta.collection}.update`]);
+      logger.info([logId, `[frontstore_hook] items.update`, meta.collection]);
       try {
         const id = meta.keys?.[0];
         if (!id) {
-          logger.info([logId, "keys.id"]);
+          logger.error([logId, "keys.id"]);
           return;
         }
 

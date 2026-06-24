@@ -109,12 +109,7 @@ export const sendBuyerEmailVerification = async (
     ORDER_URL: order.order_url,
   };
 
-  logger.info([
-    logId,
-    "[webhook.handler] sendBuyerEmailVerification.vars",
-    vars,
-    mailFrom,
-  ]);
+  logger.info([logId, "sendBuyerEmailVerification.vars", vars, mailFrom]);
 
   try {
     const result = await resend.emails.send({
@@ -129,7 +124,7 @@ export const sendBuyerEmailVerification = async (
     if (error) {
       logger.error([
         logId,
-        "[webhook.handler] sendBuyerEmailVerification.send_failed",
+        "sendBuyerEmailVerification.failed",
         data,
         error,
         headers,
@@ -137,7 +132,7 @@ export const sendBuyerEmailVerification = async (
     } else {
       logger.info([
         logId,
-        "[webhook.handler] sendBuyerEmailVerification.send",
+        "sendBuyerEmailVerification.send",
         data,
         error,
         headers,
@@ -146,7 +141,7 @@ export const sendBuyerEmailVerification = async (
   } catch (error) {
     logger.error([
       logId,
-      "[webhook.handler] sendBuyerEmailVerification.send_error",
+      "sendBuyerEmailVerification.send_error",
       String(error),
     ]);
   }
