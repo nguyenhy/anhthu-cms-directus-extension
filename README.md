@@ -118,7 +118,8 @@ podman run -d --name prod-cms \
    -p 127.0.0.1:8055:8055 \
    --restart unless-stopped \
    --replace \
-   --memory 1024m \
+   --memory 1g \
+   --memory-swap 2g \
    --network intranet \
    --env-file $(pwd)/.env \
    -v $(pwd)/extensions:/directus/extensions \
@@ -163,6 +164,7 @@ podman run -d \
   --restart unless-stopped \
   --replace \
   --memory 512m \
+  --memory-swap 1g \
   --network intranet \
   -v /mnt/lbs_disk_data-storage/pgdata:/var/lib/postgresql:Z \
   -v /mnt/lbs_disk_data-storage/pgconfig/postgresql.conf:/etc/postgresql/postgresql.conf:Z \
