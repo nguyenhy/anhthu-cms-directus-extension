@@ -67,7 +67,7 @@ export function useSendBuyerVerificationEmail(deps: Deps) {
       limit: 1,
     });
 
-    const order = orders[0] || null;
+    const order = orders?.[0] || null;
     if (!order) {
       logger.error([logId, "[frontstore_hook] order.not_found", cmd.buyerId]);
       return;
