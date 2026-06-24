@@ -9,25 +9,37 @@ type ParseResult =
   | { status: "success"; data: HookEnvConfig }
   | { status: "error"; errors: string[] };
 
+const resendApiTokenEnv = "EMAIL_SMTP_PASSWORD";
+const emailFromEnv = "EMAIL_FROM";
+const orderPathFormatEnv = "EXTENSION_FRONTSTORE_BUNDLE_FORMAT_PATH_ORDER";
+const storeUrlEnv = "EXTENSION_FRONTSTORE_BUNDLE_ENDPOINT";
+
 export function parseHookEnvConfig(env: Record<string, any>): ParseResult {
   const errors: string[] = [];
 
-  const resendApiToken = env["EMAIL_SMTP_PASSWORD"];
-  const emailFrom = env["EMAIL_FROM"];
-  const storeUrl = env["EXTENSION_FRONTSTORE_BUNDLE_ENDPOINT"];
-  const orderPathFormat = env["EXTENSION_FRONTSTORE_BUNDLE_FORMAT_PATH_ORDER"];
+  const resendApiToken = env[resendApiTokenEnv];
+  if (!resendApiToken) {
+    errors.push(`${resendApiTokenEnv} missing`);
+  }
 
-  if (!resendApiToken) errors.push("EMAIL_SMTP_PASSWORD missing");
-  if (!emailFrom) errors.push("EMAIL_FROM missing");
-  if (!orderPathFormat) errors.push("FRONTSTORE_FORMAT_PATH_ORDER missing");
+  const emailFrom = env[emailFromEnv];
+  if (!emailFrom) {
+    errors.push(`${emailFromEnv} missing`);
+  }
 
+  const orderPathFormat = env[orderPathFormatEnv];
+  if (!orderPathFormat) {
+    errors.push(`${orderPathFormatEnv} missing`);
+  }
+
+  const storeUrl = env[storeUrlEnv];
   if (!storeUrl) {
-    errors.push("FRONTSTORE_URL missing");
+    errors.push(`${storeUrlEnv} missing`);
   } else {
     try {
       new URL(storeUrl);
     } catch {
-      errors.push("FRONTSTORE_URL invalid URL");
+      errors.push(`${storeUrl} invalid URL`);
     }
   }
 
