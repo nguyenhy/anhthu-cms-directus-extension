@@ -1,0 +1,96 @@
+import { Resend } from "resend";
+import { buildOrderUrl } from "../../lib/orderUrl";
+import {
+  parseEmailVerificationPayload,
+  sendBuyerEmailVerification,
+} from "./sendBuyerEmailVerification";
+import { type defineHook } from "@directus/extensions-sdk";
+import { type HookEnvConfig } from "../config";
+
+type HookConfig = Parameters<typeof defineHook>[0];
+type RegisterFunctions = Parameters<HookConfig>[0];
+type HookExtensionContext = Parameters<HookConfig>[1];
+type ActionHandler = Parameters<RegisterFunctions["action"]>[1];
+type EventContext = Parameters<ActionHandler>[1];
+
+export type SendBuyerVerificationEmailCommand = {
+  buyerId: string;
+  email: string;
+  verifyCode: unknown;
+  verifyExpiresAt: unknown;
+};
+
+type Deps = {
+  services: HookExtensionContext["services"];
+  logger: HookExtensionContext["logger"];
+  config: HookEnvConfig;
+};
+
+export function useSendBuyerVerificationEmail(deps: Deps) {
+  const { services, logger, config } = deps;
+  const { resendApiToken, emailFrom, storeUrl, orderPathFormat } = config;
+
+  async function execute(
+    cmd: SendBuyerVerificationEmailCommand,
+    ctx: EventContext,
+    logId: string,
+  ): Promise<void> {
+    const payload = parseEmailVerificationPayload({
+      verify_expires_at: cmd.verifyExpiresAt,
+      verify_code: cmd.verifyCode,
+      email: cmd.email,
+    });
+
+    if (payload.status === "error") {
+      logger.error([logId, "[frontstore_hook] payload.invalid", payload.msg]);
+      return;
+    }
+
+    if (!ctx.schema) {
+      logger.error(logId, ["[frontstore_hook] execute.schema"]);
+      return;
+    }
+
+    const orderSv = new services.ItemsService<{
+      id: string;
+      slug: string;
+      order_id: string;
+    }>("order", {
+      knex: ctx.database,
+      schema: ctx.schema,
+      accountability: ctx.accountability,
+    });
+
+    const orders = await orderSv.readByQuery({
+      fields: ["id", "slug", "order_id"],
+      filter: { buyer: { _eq: cmd.buyerId } },
+      limit: 1,
+    });
+
+    const order = orders[0] || null;
+    if (!order) {
+      logger.error([logId, "[frontstore_hook] order.not_found", cmd.buyerId]);
+      return;
+    }
+
+    try {
+      const resend = new Resend(resendApiToken);
+      await sendBuyerEmailVerification({
+        resend,
+        mailFrom: emailFrom,
+        buyer: payload.data,
+        order: {
+          order_id: order.order_id,
+          order_url: buildOrderUrl(order.slug, storeUrl, orderPathFormat),
+        },
+        logId,
+        logger,
+      });
+      logger.info([logId, "[frontstore_hook] success"]);
+    } catch (error) {
+      logger.error([logId, "[frontstore_hook] error", String(error)]);
+    }
+  }
+
+  return { execute };
+}
