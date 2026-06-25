@@ -7,7 +7,10 @@ import {
 import { type defineHook } from "@directus/extensions-sdk";
 import { type HookEnvConfig } from "../config";
 import { nanoid } from "nanoid";
-import { useParseEmailVerification } from "../email/emailVerification";
+import {
+  EmailVerificationParsedVar,
+  useParseEmailVerification,
+} from "../email/emailVerification";
 import { Liquid } from "liquidjs";
 
 type HookConfig = Parameters<typeof defineHook>[0];
@@ -147,11 +150,13 @@ export function useCreateBuyerVerificationEmailSending(deps: Deps) {
       return;
     }
 
+    const buyer = payload.data;
+    const order_id = order.order_id;
+    const order_url = buildOrderUrl(order.slug, storeUrl, orderPathFormat);
+    let parsed: EmailVerificationParsedVar | null = null;
+
     try {
-      const buyer = payload.data;
-      const order_id = order.order_id;
-      const order_url = buildOrderUrl(order.slug, storeUrl, orderPathFormat);
-      const parsed = await mail.parse({
+      parsed = await mail.parse({
         html: {
           YEAR: new Date().getFullYear().toString(),
           USER_EMAIL: buyer.email,
@@ -168,6 +173,12 @@ export function useCreateBuyerVerificationEmailSending(deps: Deps) {
           BRAND: "Simpla",
         },
       });
+    } catch (error) {
+      logger.error([logId, "[frontstore_hook] parse.error", String(error)]);
+      return;
+    }
+
+    try {
       const sendingSv = new services.ItemsService("email_sending", {
         knex: ctx.database,
         schema: ctx.schema,

@@ -131,6 +131,12 @@ export type EmailVerificationPreviewVar = {
   BRAND: string;
 };
 
+export type EmailVerificationParsedVar = {
+  html: string;
+  subject: string;
+  preview: string;
+};
+
 export const useParseEmailVerification = (liquid: Liquid) => {
   const html = emailVerificationHTML();
   const parsedHTML = liquid.parse(html);
@@ -166,7 +172,7 @@ export const useParseEmailVerification = (liquid: Liquid) => {
     html: EmailVerificationHtmlVar;
     subject: EmailVerificationSubjectVar;
     preview: EmailVerificationPreviewVar;
-  }) => {
+  }): Promise<EmailVerificationParsedVar> => {
     const [html, subject, preview] = await Promise.all([
       parseHtml(data.html),
       parseSubject(data.subject),
