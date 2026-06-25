@@ -6,6 +6,9 @@ import {
 } from "./sendBuyerEmailVerification";
 import { type defineHook } from "@directus/extensions-sdk";
 import { type HookEnvConfig } from "../config";
+import { nanoid } from "nanoid";
+import { useParseEmailVerification } from "../email/emailVerification";
+import { Liquid } from "liquidjs";
 
 type HookConfig = Parameters<typeof defineHook>[0];
 type RegisterFunctions = Parameters<HookConfig>[0];
@@ -87,6 +90,98 @@ export function useSendBuyerVerificationEmail(deps: Deps) {
         logger,
       });
       logger.info([logId, "[frontstore_hook] success"]);
+    } catch (error) {
+      logger.error([logId, "[frontstore_hook] error", String(error)]);
+    }
+  }
+
+  return { execute };
+}
+
+export function useCreateBuyerVerificationEmailSending(deps: Deps) {
+  const { services, logger, config } = deps;
+  const { storeUrl, orderPathFormat } = config;
+  const liquid = new Liquid();
+  const mail = useParseEmailVerification(liquid);
+
+  async function execute(
+    cmd: SendBuyerVerificationEmailCommand,
+    ctx: EventContext,
+    logId: string,
+  ): Promise<void> {
+    const payload = parseEmailVerificationPayload({
+      verify_expires_at: cmd.verifyExpiresAt,
+      verify_code: cmd.verifyCode,
+      email: cmd.email,
+    });
+
+    if (payload.status === "error") {
+      logger.error([logId, "[frontstore_hook] payload.invalid", payload.msg]);
+      return;
+    }
+
+    if (!ctx.schema) {
+      logger.error(logId, ["[frontstore_hook] execute.schema"]);
+      return;
+    }
+
+    const orderSv = new services.ItemsService<{
+      id: string;
+      slug: string;
+      order_id: string;
+    }>("order", {
+      knex: ctx.database,
+      schema: ctx.schema,
+      accountability: ctx.accountability,
+    });
+
+    const orders = await orderSv.readByQuery({
+      fields: ["id", "slug", "order_id"],
+      filter: { buyer: { _eq: cmd.buyerId } },
+      limit: 1,
+    });
+
+    const order = orders?.[0] || null;
+    if (!order) {
+      logger.error([logId, "[frontstore_hook] order.not_found", cmd.buyerId]);
+      return;
+    }
+
+    try {
+      const buyer = payload.data;
+      const order_id = order.order_id;
+      const order_url = buildOrderUrl(order.slug, storeUrl, orderPathFormat);
+      const parsed = await mail.parse({
+        html: {
+          YEAR: new Date().getFullYear().toString(),
+          USER_EMAIL: buyer.email,
+          BRAND: "Simpla",
+          ORDER_ID: order_id,
+          ORDER_URL: order_url,
+          OTP_CODE: buyer.verify_code,
+          OTP_EXPIRES_MINUTES: buyer.duration.toString(),
+        },
+        subject: {
+          BRAND: "Simpla",
+        },
+        preview: {
+          BRAND: "Simpla",
+        },
+      });
+      const sendingSv = new services.ItemsService("email_sending", {
+        knex: ctx.database,
+        schema: ctx.schema,
+        accountability: ctx.accountability,
+      });
+      const slug = nanoid(64);
+      const res = await sendingSv.createOne({
+        slug: slug,
+        to: buyer.email,
+        subject: parsed.subject,
+        preview: parsed.preview,
+        html: parsed.html,
+      });
+      logger.info([logId, "[frontstore_hook] success", res.toString()]);
     } catch (error) {
       logger.error([logId, "[frontstore_hook] error", String(error)]);
     }
