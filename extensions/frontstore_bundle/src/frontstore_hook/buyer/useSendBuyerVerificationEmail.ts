@@ -166,11 +166,9 @@ export function useCreateBuyerVerificationEmailSending(deps: Deps) {
           OTP_EXPIRES_MINUTES: payload.code.duration.toString(),
         },
         subject: {
-          BRAND: "Simpla",
+          ORDER_ID: order.order_id,
         },
-        preview: {
-          BRAND: "Simpla",
-        },
+        preview: {},
       });
     } catch (error) {
       logger.error([logId, "[frontstore_hook] parse.error", String(error)]);

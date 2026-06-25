@@ -20,7 +20,7 @@ export const emailConfirmPaymentHTML = () => {
 
     <div style="background-color: #0e0f0c; border-radius: 40px 40px 0 0; padding: 28px 40px; display: flex; align-items: center; justify-content: space-between;">
       <a href="{{STORE_URL}}" style="font-family: 'Wise Sans', Inter, ui-sans-serif, system-ui, sans-serif; font-weight: 900; font-size: 24px; color: #9fe870; letter-spacing: -0.02em; line-height: 1; text-decoration: none;">{{BRAND}}</a>
-      <span style="background-color: rgba(159,232,112,0.15); color: #9fe870; font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; padding: 5px 12px; border-radius: 9999px; border: 1px solid rgba(159,232,112,0.3);">Order confirmed</span>
+      <span style="background-color: rgba(159,232,112,0.15); color: #9fe870; font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; padding: 5px 12px; border-radius: 9999px; border: 1px solid rgba(159,232,112,0.3);">Payment confirmed</span>
     </div>
 
     <div style="background-color: #ffffff; padding: 48px 40px;">
@@ -64,10 +64,10 @@ export const emailConfirmPaymentHTML = () => {
 
       <div style="background-color: #e8ebe6; border-radius: 16px; padding: 28px; text-align: center; margin: 8px 0 32px;">
         <p style="font-size: 14px; color: #868685; margin: 0 0 16px 0;">Your files are ready. Visit your download page to access all purchased products.</p>
-        <a href="{{ORDER_URL}}" style="display: inline-block; background-color: #9fe870; color: #163300; font-size: 16px; font-weight: 600; line-height: 1; padding: 14px 28px; border-radius: 9999px; text-decoration: none; letter-spacing: -0.02em;">Download my products →</a>
+        <a href="{{DOWNLOAD_URL}}" style="display: inline-block; background-color: #9fe870; color: #163300; font-size: 16px; font-weight: 600; line-height: 1; padding: 14px 28px; border-radius: 9999px; text-decoration: none; letter-spacing: -0.02em;">Download my products →</a>
         <div style="margin-top: 16px; font-size: 12px; color: #868685; line-height: 1.6;">
           Or copy this link to open manually:
-          <span style="display: block; font-family: ui-monospace, 'SF Mono', Menlo, monospace; font-size: 12px; color: #0e0f0c; background-color: #e8ebe6; border: 1px solid rgba(14,15,12,0.12); border-radius: 8px; padding: 10px 14px; word-break: break-all; margin-top: 6px;">{{ORDER_URL}}</span>
+          <span style="display: block; font-family: ui-monospace, 'SF Mono', Menlo, monospace; font-size: 12px; color: #0e0f0c; background-color: #e8ebe6; border: 1px solid rgba(14,15,12,0.12); border-radius: 8px; padding: 10px 14px; word-break: break-all; margin-top: 6px;">{{DOWNLOAD_URL}}</span>
         </div>
       </div>
 
@@ -91,6 +91,7 @@ export const emailConfirmPaymentHTML = () => {
 
   </div>
 </body>
+</html>
 `;
 };
 
@@ -106,25 +107,22 @@ export type EmailConfirmPaymentHtmlVar = {
   SUBTOTAL: string;
   DISCOUNT: string;
   TOTAL_PAID: string;
+  DOWNLOAD_URL: string;
 };
 
 export const emailConfirmPaymentSubject = () => {
-  return "{{BRAND}} payment confirm for {{ORDER_ID}}";
+  return "Your downloads are ready for order {{ORDER_ID}}";
 };
 
 export type EmailConfirmPaymentSubjectVar = {
-  BRAND: string;
   ORDER_ID: string;
 };
 
 export const emailConfirmPaymentPreview = () => {
-  return "{{BRAND}} payment confirm for {{ORDER_ID}}";
+  return "Access your digital products now. Your files are ready to download.";
 };
 
-export type EmailConfirmPaymentPreviewVar = {
-  BRAND: string;
-  ORDER_ID: string;
-};
+export type EmailConfirmPaymentPreviewVar = {};
 
 export type EmailConfirmPaymentParsedVar = {
   html: string;

@@ -83,7 +83,7 @@ export default defineEndpoint(async (router, context) => {
       knex: context.database,
     });
 
-    const slug = nanoid(32);
+    const slug = nanoid(64);
     const datePart = new Date().toISOString().slice(2, 10).replace(/-/g, ""); // '260619'
     const randomPart = randomBytes(3).toString("hex").toUpperCase(); // 'F3B2'
     const orderId = `ORD-${datePart}-${randomPart}`;

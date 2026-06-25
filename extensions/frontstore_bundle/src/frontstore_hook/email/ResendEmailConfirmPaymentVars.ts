@@ -10,4 +10,5 @@ export type ResendEmailConfirmPaymentVars = {
   SUBTOTAL: string;
   DISCOUNT: string;
   TOTAL_PAID: string;
+  DOWNLOAD_URL: string;
 };

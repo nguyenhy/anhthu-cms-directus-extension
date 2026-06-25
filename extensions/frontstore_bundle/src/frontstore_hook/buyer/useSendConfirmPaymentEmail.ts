@@ -1,16 +1,10 @@
 import { Resend } from "resend";
 import { buildSlugUrl, buildUrl } from "../../lib/buildUrl";
-import {
-  parseConfirmPaymentPayload,
-  sendBuyerConfirmPayment,
-} from "./sendConfirmPayment";
+import { sendBuyerConfirmPayment } from "./sendConfirmPayment";
 import { type defineHook } from "@directus/extensions-sdk";
 import { type HookEnvConfig } from "../config";
 import { nanoid } from "nanoid";
-import {
-  EmailVerificationParsedVar,
-  useParseEmailVerification,
-} from "../email/emailVerification";
+import { EmailVerificationParsedVar } from "../email/emailVerification";
 import { Liquid } from "liquidjs";
 import { useParseEmailConfirmPayment } from "../email/emailConfirmPayment";
 import { formatMoney } from "../../lib/formatCurrency";
@@ -33,7 +27,13 @@ type Deps = {
 
 export function useSendConfirmPaymentEmail(deps: Deps) {
   const { services, logger, config } = deps;
-  const { resendApiToken, emailFrom, storeUrl, orderPathFormat } = config;
+  const {
+    resendApiToken,
+    emailFrom,
+    storeUrl,
+    orderPathFormat,
+    downloadPathFormat,
+  } = config;
 
   async function execute(
     cmd: SendBuyerVerificationEmailCommand,
@@ -134,6 +134,11 @@ export function useSendConfirmPaymentEmail(deps: Deps) {
             +match.order.template.product.price,
             match.order.template.product.currency,
           ),
+          download_url: buildSlugUrl(
+            match.order.slug,
+            storeUrl,
+            downloadPathFormat,
+          ),
         },
         store: {
           url: buildUrl("/templates", storeUrl),
@@ -153,7 +158,7 @@ export function useSendConfirmPaymentEmail(deps: Deps) {
 
 export function useCreateConfirmPaymentEmailSending(deps: Deps) {
   const { services, logger, config } = deps;
-  const { storeUrl, orderPathFormat } = config;
+  const { storeUrl, orderPathFormat, downloadPathFormat } = config;
   const liquid = new Liquid();
   const mail = useParseEmailConfirmPayment(liquid);
 
@@ -260,15 +265,16 @@ export function useCreateConfirmPaymentEmailSending(deps: Deps) {
             +match.order.template.product.price,
             match.order.template.product.currency,
           ),
+          DOWNLOAD_URL: buildSlugUrl(
+            match.order.slug,
+            storeUrl,
+            downloadPathFormat,
+          ),
         },
         subject: {
-          BRAND: "Simpla",
           ORDER_ID: match.order.order_id,
         },
-        preview: {
-          BRAND: "Simpla",
-          ORDER_ID: match.order.order_id,
-        },
+        preview: {},
       });
     } catch (error) {
       logger.error([logId, "[frontstore_hook] parse.error", String(error)]);

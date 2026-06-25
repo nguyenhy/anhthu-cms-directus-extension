@@ -2,13 +2,13 @@ import { ResendEmailConfirmPaymentVars } from "../email/ResendEmailConfirmPaymen
 import { isObject, isString } from "../utils/extract";
 import { Resend } from "resend";
 
-type Buyer = {};
 type Order = {
   order_id: string;
   order_url: string;
   subtotal: string;
   discount: string;
   total_paid: string;
+  download_url: string;
 };
 type Store = {
   url: string;
@@ -103,6 +103,7 @@ export const sendBuyerConfirmPayment = async (props: Props): Promise<void> => {
     SUBTOTAL: order.subtotal,
     DISCOUNT: order.discount,
     TOTAL_PAID: order.total_paid,
+    DOWNLOAD_URL: order.download_url,
   };
 
   try {

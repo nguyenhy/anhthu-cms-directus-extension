@@ -117,20 +117,18 @@ export type EmailVerificationHtmlVar = {
 };
 
 export const emailVerificationSubject = () => {
-  return "{{BRAND}} verification code";
+  return "Verification code for Order {{ORDER_ID}}";
 };
 
 export type EmailVerificationSubjectVar = {
-  BRAND: string;
+  ORDER_ID: string;
 };
 
 export const emailVerificationPreview = () => {
-  return "{{BRAND}} verification code";
+  return "Use this code to verify your email for your order.";
 };
 
-export type EmailVerificationPreviewVar = {
-  BRAND: string;
-};
+export type EmailVerificationPreviewVar = {};
 
 export type EmailVerificationParsedVar = {
   html: string;
