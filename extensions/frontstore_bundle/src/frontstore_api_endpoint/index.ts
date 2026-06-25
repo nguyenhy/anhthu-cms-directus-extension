@@ -111,4 +111,31 @@ export default defineEndpoint(async (router, context) => {
       slug: slug,
     });
   });
+
+  router.get("/email_sending/:slug/preview", async (_req, res) => {
+    const slug = _req.params.slug;
+    if (!slug) {
+      return res.status(404).send();
+    }
+
+    const schema = await context.getSchema();
+    const templateSv = new ItemsService<{ html: string }>("email_sending", {
+      schema: schema,
+      knex: context.database,
+    });
+    const items = await templateSv.readByQuery({
+      fields: ["html"],
+      filter: {
+        slug: {
+          _eq: slug,
+        },
+      },
+    });
+    const item = items?.[0];
+    if (!item) {
+      return res.status(404).send();
+    }
+
+    return res.send(item.html);
+  });
 });
