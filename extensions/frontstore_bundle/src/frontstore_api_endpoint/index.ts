@@ -2,13 +2,38 @@ import { defineEndpoint } from "@directus/extensions-sdk";
 import { getImagePresignedUrl } from "./lib/storage";
 import { nanoid } from "nanoid";
 import { randomBytes } from "node:crypto";
+import { isObject, isString } from "../frontstore_hook/utils/extract";
 
 export default defineEndpoint(async (router, context) => {
+  const isAccountabilityGuarded = (req: unknown) => {
+    const accountability =
+      isObject(req) && "accountability" in req && isObject(req.accountability)
+        ? req.accountability
+        : null;
+
+    const accountability_user =
+      !!accountability &&
+      isObject(accountability) &&
+      isString(accountability.user)
+        ? accountability.user
+        : null;
+
+    return !!accountability_user;
+  };
+
+  router.use((req, res, next) => {
+    if (isAccountabilityGuarded(req)) {
+      return next();
+    }
+
+    return res.status(401).send();
+  });
+
   router.get("/", async (_req, res) => {
     return res.status(200).json({ status: "ok" });
   });
-  router.get("/asset/", async (_req, res) => {
-    const file = _req.query.file || "";
+  router.get("/asset/", async (req, res) => {
+    const file = req.query.file || "";
     if (typeof file !== "string" || file !== file.trim() || !file.trim()) {
       return res.status(400).send();
     }
@@ -137,5 +162,9 @@ export default defineEndpoint(async (router, context) => {
     }
 
     return res.send(item.html);
+  });
+
+  router.use((req, res, next) => {
+    return res.status(404).send();
   });
 });
