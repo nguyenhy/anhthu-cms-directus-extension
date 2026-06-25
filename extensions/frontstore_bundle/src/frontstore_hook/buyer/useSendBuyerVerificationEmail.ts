@@ -1,5 +1,5 @@
 import { Resend } from "resend";
-import { buildOrderUrl } from "../../lib/orderUrl";
+import { buildSlugUrl } from "../../lib/buildUrl";
 import {
   parseEmailVerificationPayload,
   sendBuyerEmailVerification,
@@ -84,10 +84,11 @@ export function useSendBuyerVerificationEmail(deps: Deps) {
       await sendBuyerEmailVerification({
         resend,
         mailFrom: emailFrom,
-        buyer: payload.data,
+        mailTo: payload.email,
+        code: payload.code,
         order: {
           order_id: order.order_id,
-          order_url: buildOrderUrl(order.slug, storeUrl, orderPathFormat),
+          order_url: buildSlugUrl(order.slug, storeUrl, orderPathFormat),
         },
         logId,
         logger,
@@ -150,21 +151,19 @@ export function useCreateBuyerVerificationEmailSending(deps: Deps) {
       return;
     }
 
-    const buyer = payload.data;
-    const order_id = order.order_id;
-    const order_url = buildOrderUrl(order.slug, storeUrl, orderPathFormat);
+    const order_url = buildSlugUrl(order.slug, storeUrl, orderPathFormat);
     let parsed: EmailVerificationParsedVar | null = null;
 
     try {
       parsed = await mail.parse({
         html: {
           YEAR: new Date().getFullYear().toString(),
-          USER_EMAIL: buyer.email,
+          USER_EMAIL: payload.email,
           BRAND: "Simpla",
-          ORDER_ID: order_id,
+          ORDER_ID: order.order_id,
           ORDER_URL: order_url,
-          OTP_CODE: buyer.verify_code,
-          OTP_EXPIRES_MINUTES: buyer.duration.toString(),
+          OTP_CODE: payload.code.verify_code,
+          OTP_EXPIRES_MINUTES: payload.code.duration.toString(),
         },
         subject: {
           BRAND: "Simpla",
@@ -187,7 +186,7 @@ export function useCreateBuyerVerificationEmailSending(deps: Deps) {
       const slug = nanoid(64);
       const res = await sendingSv.createOne({
         slug: slug,
-        to: buyer.email,
+        to: payload.email,
         subject: parsed.subject,
         preview: parsed.preview,
         html: parsed.html,

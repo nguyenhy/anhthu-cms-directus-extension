@@ -1,4 +1,5 @@
 import { Liquid, RenderOptions } from "liquidjs";
+import { useParseEmailTemplate } from "./emailParser";
 
 export const emailVerificationHTML = () => {
   return `
@@ -139,53 +140,12 @@ export type EmailVerificationParsedVar = {
 
 export const useParseEmailVerification = (liquid: Liquid) => {
   const html = emailVerificationHTML();
-  const parsedHTML = liquid.parse(html);
-
   const subject = emailVerificationSubject();
-  const parsedSubject = liquid.parse(subject);
-
   const preview = emailVerificationPreview();
-  const parsedPreview = liquid.parse(preview);
 
-  const parseHtml = async (
-    data: EmailVerificationHtmlVar,
-    renderOptions?: RenderOptions,
-  ) => {
-    return liquid.render(parsedHTML, data, renderOptions);
-  };
-
-  const parseSubject = async (
-    data: EmailVerificationSubjectVar,
-    renderOptions?: RenderOptions,
-  ) => {
-    return liquid.render(parsedSubject, data, renderOptions);
-  };
-
-  const parsePreview = async (
-    data: EmailVerificationPreviewVar,
-    renderOptions?: RenderOptions,
-  ) => {
-    return liquid.render(parsedPreview, data, renderOptions);
-  };
-
-  const parse = async (data: {
-    html: EmailVerificationHtmlVar;
-    subject: EmailVerificationSubjectVar;
-    preview: EmailVerificationPreviewVar;
-  }): Promise<EmailVerificationParsedVar> => {
-    const [html, subject, preview] = await Promise.all([
-      parseHtml(data.html),
-      parseSubject(data.subject),
-      parsePreview(data.preview),
-    ]);
-
-    return { html, subject, preview };
-  };
-
-  return {
-    parseHtml,
-    parseSubject,
-    parsePreview,
-    parse,
-  };
+  return useParseEmailTemplate<
+    EmailVerificationHtmlVar,
+    EmailVerificationSubjectVar,
+    EmailVerificationPreviewVar
+  >(liquid, { html, subject, preview });
 };

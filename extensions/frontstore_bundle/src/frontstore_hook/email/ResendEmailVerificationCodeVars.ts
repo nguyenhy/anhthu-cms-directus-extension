@@ -1,4 +1,4 @@
-export type EmailVerificationCodeVars = {
+export type ResendEmailVerificationCodeVars = {
   BRAND: string;
   OTP_CODE: string;
   OTP_EXPIRES_MINUTES: string;

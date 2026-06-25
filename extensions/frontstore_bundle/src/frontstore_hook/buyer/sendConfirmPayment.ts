@@ -1,22 +1,25 @@
-import { ResendEmailVerificationCodeVars } from "../email/ResendEmailVerificationCodeVars";
+import { ResendEmailConfirmPaymentVars } from "../email/ResendEmailConfirmPaymentVars";
 import { isObject, isString } from "../utils/extract";
 import { Resend } from "resend";
 
-type Code = {
-  verify_expires_at: Date;
-  verify_code: string;
-  duration: number;
-};
+type Buyer = {};
 type Order = {
   order_id: string;
   order_url: string;
+  subtotal: string;
+  discount: string;
+  total_paid: string;
+};
+type Store = {
+  url: string;
+  support_url: string;
 };
 type Props = {
   resend: Resend;
   mailFrom: string;
   mailTo: string;
-  code: Code;
   order: Order;
+  store: Store;
   logId: string;
   logger: {
     info: (...args: unknown[]) => void;
@@ -24,12 +27,15 @@ type Props = {
   };
 };
 
-export const parseEmailVerificationPayload = (payload: {
+export const parseConfirmPaymentPayload = (payload: {
   verify_expires_at: unknown;
   verify_code: unknown;
   email: unknown;
 }):
-  | { status: "success"; code: Code; email: string }
+  | {
+      status: "success";
+      email: string;
+    }
   | { status: "error"; msg: string } => {
   if (!isObject(payload)) {
     return { status: "error", msg: "payload_empty" };
@@ -71,78 +77,50 @@ export const parseEmailVerificationPayload = (payload: {
 
   return {
     status: "success",
-    email: email,
-    code: {
-      verify_expires_at: verifyExpiresDate,
-      verify_code: verify_code,
-      duration: duration,
-    },
+    email,
   };
 };
 
-export const sendBuyerEmailVerification = async (
-  props: Props,
-): Promise<void> => {
-  const { mailFrom, mailTo, resend, code, order, logger, logId } = props;
+export const sendBuyerConfirmPayment = async (props: Props): Promise<void> => {
+  const { mailFrom, mailTo, resend, store, order, logger, logId } = props;
 
-  logger.info([
-    logId,
-    "[webhook.handler] sendBuyerEmailVerification.payload",
-    code,
-  ]);
+  logger.info([logId, "[webhook.handler] payload"]);
 
   if (!mailFrom) {
-    logger.error([
-      logId,
-      "[webhook.handler] sendBuyerEmailVerification.mail_from",
-    ]);
+    logger.error([logId, "[webhook.handler] mail_from"]);
     return;
   }
 
-  const vars: ResendEmailVerificationCodeVars = {
-    BRAND: "Simpla",
-    OTP_CODE: code.verify_code,
-    OTP_EXPIRES_MINUTES: code.duration.toString(),
-    USER_EMAIL: mailTo,
+  const vars: ResendEmailConfirmPaymentVars = {
     YEAR: new Date().getFullYear().toString(),
+    BRAND: "Simpla",
+    STORE_URL: store.url,
+    SUPPORT_URL: store.support_url,
+
+    USER_EMAIL: mailTo,
     ORDER_ID: order.order_id,
     ORDER_URL: order.order_url,
+    SUBTOTAL: order.subtotal,
+    DISCOUNT: order.discount,
+    TOTAL_PAID: order.total_paid,
   };
-
-  logger.info([logId, "sendBuyerEmailVerification.vars", vars, mailFrom]);
 
   try {
     const result = await resend.emails.send({
       from: mailFrom,
       to: [mailTo],
       template: {
-        id: "simpla-user-email-verification",
+        id: "simpla-payment-confirmation",
         variables: vars,
       },
     });
     const { data, error, headers } = result;
     if (error) {
-      logger.error([
-        logId,
-        "sendBuyerEmailVerification.failed",
-        data,
-        error,
-        headers,
-      ]);
+      logger.error([logId, "failed", data, error, headers]);
     } else {
-      logger.info([
-        logId,
-        "sendBuyerEmailVerification.send",
-        data,
-        error,
-        headers,
-      ]);
+      logger.info([logId, "send", data, error, headers]);
     }
   } catch (error) {
-    logger.error([
-      logId,
-      "sendBuyerEmailVerification.send_error",
-      String(error),
-    ]);
+    logger.error([logId, "send_error", String(error)]);
   }
 };
