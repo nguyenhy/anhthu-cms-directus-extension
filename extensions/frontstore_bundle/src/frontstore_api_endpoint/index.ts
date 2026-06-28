@@ -1,8 +1,12 @@
 import { defineEndpoint } from "@directus/extensions-sdk";
 import { getImagePresignedUrl } from "./lib/storage";
 import { nanoid } from "nanoid";
-import { randomBytes } from "node:crypto";
-import { isObject, isString } from "../frontstore_hook/utils/extract";
+import {
+  getRawKey,
+  isObject,
+  isString,
+} from "../frontstore_hook/utils/extract";
+import { buildRecordId } from "../lib/buildRecordId";
 
 export default defineEndpoint(async (router, context) => {
   const isAccountabilityGuarded = (req: unknown) => {
@@ -93,15 +97,13 @@ export default defineEndpoint(async (router, context) => {
         ],
       });
     } catch (error) {
-      context.logger.error(template);
+      context.logger.error([String(error)]);
     }
 
     if (!template) {
-      context.logger.error("templates %s", template);
+      context.logger.error(["template not found"]);
       return res.status(400).send();
     }
-
-    context.logger.info(template);
 
     const orderSv = new ItemsService("order", {
       schema: schema,
@@ -109,9 +111,7 @@ export default defineEndpoint(async (router, context) => {
     });
 
     const slug = nanoid(64);
-    const datePart = new Date().toISOString().slice(2, 10).replace(/-/g, ""); // '260619'
-    const randomPart = randomBytes(3).toString("hex").toUpperCase(); // 'F3B2'
-    const orderId = `ORD-${datePart}-${randomPart}`;
+    const orderId = buildRecordId(`ORD`);
 
     try {
       const order = await orderSv.createOne({
