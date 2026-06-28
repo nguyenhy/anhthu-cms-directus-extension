@@ -121,6 +121,7 @@ podman run -d --name prod-cms \
    --memory 1g \
    --memory-swap 2g \
    --network intranet \
+   --userns=keep-id \
    --env-file $(pwd)/.env \
    -v $(pwd)/extensions:/directus/extensions \
    -e NODE_OPTIONS="--max-old-space-size=512" \
