@@ -164,6 +164,56 @@ export default defineEndpoint(async (router, context) => {
     return res.send(item.html);
   });
 
+  router.post("/support_ticket/new", async (_req, res) => {
+    const json = _req.body;
+    const rawSubject = getRawKey(json, "subject");
+    const rawEmail = getRawKey(json, "email");
+    const rawName = getRawKey(json, "name");
+    const rawMessage = getRawKey(json, "message");
+    const subject = isString(rawSubject) ? rawSubject : "";
+    const email = isString(rawEmail) ? rawEmail : "";
+    const name = isString(rawName) ? rawName : "";
+    const message = isString(rawMessage) ? rawMessage : "";
+
+    if (!subject || !email) {
+      context.logger.error(["json", json]);
+      return res.status(400).send();
+    }
+
+    const schema = await context.getSchema();
+    const service = new ItemsService("support_ticket", {
+      schema: schema,
+      knex: context.database,
+    });
+
+    const slug = nanoid(64);
+    const ticket_id = buildRecordId("TIC");
+
+    let item = null;
+    try {
+      item = await service.createOne({
+        slug: slug,
+        ticket_id: ticket_id,
+        subject: subject,
+        email: email,
+        name: name,
+        message: message,
+      });
+    } catch (error) {
+      context.logger.error([String(error)]);
+    }
+
+    if (!item) {
+      context.logger.error([item]);
+      return res.status(500).send();
+    }
+
+    return res.status(200).json({
+      slug: slug,
+      ticket_id: ticket_id,
+    });
+  });
+
   router.use((req, res, next) => {
     return res.status(404).send();
   });
