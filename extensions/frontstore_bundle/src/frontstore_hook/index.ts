@@ -164,11 +164,7 @@ export default defineHook((register, context) => {
           logId,
         );
       } catch (error) {
-        logger.error([
-          logId,
-          "[frontstore_hook] items.create unhandled",
-          String(error),
-        ]);
+        logger.error([logId, "error", String(error)]);
       }
     }
   });
