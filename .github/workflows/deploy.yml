@@ -8,18 +8,21 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
-      - name: Execute Script over SSH
-        uses: appleboy/ssh-action@master
+      - name: Install Cloudflare CLI
+        run: |
+          curl -L --output cloudflared.deb https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb
+          sudo dpkg -i cloudflared.deb
+
+      - name: Execute Script over SSH Tunnel
+        uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.LIGHTSAIL_IP }}
           username: ubuntu
           key: ${{ secrets.LIGHTSAIL_SSH_KEY }}
-          script_stop: true
-          ssh-agent: true
+          proxy_command: /usr/local/bin/cloudflared access ssh --hostname ${{ secrets.LIGHTSAIL_IP }}
           script: |
-            # Read repo script directly and pipe text straight into target bash
             cat << 'ENGINE_EOF' | bash
             $(cat .github/scripts/deploy.sh)
             ENGINE_EOF
