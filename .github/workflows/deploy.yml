@@ -23,7 +23,7 @@ jobs:
       - name: Install and Build Extensions
         run: |
           cd extensions/frontstore_bundle
-          pnpm install --frozen-lockfile
+          pnpm install --no-frozen-lockfile
           pnpm build
 
       - name: Push Build to Isolated Branch
