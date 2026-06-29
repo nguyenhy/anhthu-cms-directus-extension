@@ -1,46 +1,32 @@
 #!/bin/bash
 set -e
 
-# 1. Paths and Config
+# 1. Config and Paths
 TIMESTAMP=$(date +%Y%m%d%H%M%S)
 BASE_DIR="$HOME/directus_deploy"
-BUILD_REPO_DIR="$BASE_DIR/repo_$TIMESTAMP"
-NEW_EXT_DIR="$BASE_DIR/extensions_$TIMESTAMP"
-CURRENT_LINK="$BASE_DIR/extension"
+NEW_RELEASE_DIR="$BASE_DIR/release_$TIMESTAMP"
+CURRENT_LINK="$BASE_DIR/live_extensions"
 LOG_FILE="$BASE_DIR/deploy.log"
+REPO_URL="git@github.com:nguyenhy/anhthu-cms-directus-extension.git"
 
-# Redirect stdout and stderr to log file + console
+# Redirect output to log and console
 exec > >(tee -a "$LOG_FILE") 2>&1
 
 echo "========================================="
 echo "DEPLOY START: $(date '+%Y-%m-%d %H:%M:%S')"
 echo "========================================="
 
-echo "-> 1. Cloning repository copy into fresh directory..."
+# 2. Ensure base directory exists
 mkdir -p "$BASE_DIR"
-git clone --depth 1 -b feat/simple-deploy git@github.com:nguyenhy/anhthu-cms-directus-extension.git "$BUILD_REPO_DIR"
 
-cd "$BUILD_REPO_DIR"
-COMMIT_MSG=$(git log -1 --pretty=%B)
-echo "COMMIT: $COMMIT_MSG"
+echo "-> 1. Cloning pre-compiled artifact branch..."
+git clone --depth 1 -b dist-deploy "$REPO_URL" "$NEW_RELEASE_DIR"
 
-echo "-> 2. Preparing fresh isolated build directory..."
-mkdir -p "$NEW_EXT_DIR"
-cp -r "$BUILD_REPO_DIR/extensions/"* "$NEW_EXT_DIR/"
+echo "-> 2. Swapping live symlink..."
+ln -sfn "$NEW_RELEASE_DIR" "$CURRENT_LINK"
 
-echo "-> 3. Running isolated build (Temporary container)..."
-podman run --rm \
-   --userns=keep-id \
-   -e COREPACK_ENABLE_DOWNLOAD_PROMPT=0 \
-   -v "$NEW_EXT_DIR":/directus/extensions:z \
-   directus/directus:latest \
-   /bin/sh -c "corepack enable && corepack prepare pnpm@latest --activate && cd /directus/extensions/frontstore_bundle/ && pnpm install && pnpm build"
-
-echo "-> 4. Swapping symlink to point to new build..."
-ln -sfn "$NEW_EXT_DIR" "$CURRENT_LINK"
-
-echo "-> 5. Restarting Production Container with New Extensions..."
-# This step replaces the live production instance only AFTER build success
+echo "-> 3. Restarting Production Container..."
+# Point the volume mount to the stable symlink path
 podman run -d \
    --name prod-cms \
    -p 127.0.0.1:8055:8055 \
@@ -50,16 +36,12 @@ podman run -d \
    --memory-swap 2g \
    --network intranet \
    --userns=keep-id \
-   --env-file "$BUILD_REPO_DIR/.env" \
-   -v "$CURRENT_LINK":/directus/extensions:z \
-   -e NODE_OPTIONS="--max-old-space-size=512" \
-   -e NODE_ENV="development" \
+   -v "$CURRENT_LINK":/directus/extensions/frontstore_bundle/dist:z \
    directus/directus:latest
 
-echo "-> 6. Cleaning up old builds (keeping last 10)..."
+echo "-> 4. Cleaning up old releases (keeping last 10)..."
 cd "$BASE_DIR"
-ls -dt extensions_* | tail -n +11 | xargs rm -rf -- 2>/dev/null || true
-ls -dt repo_* | tail -n +11 | xargs rm -rf -- 2>/dev/null || true
+ls -dt release_* | tail -n +11 | xargs rm -rf -- 2>/dev/null || true
 
 echo "STATUS: Success"
 echo "DEPLOY END: $(date '+%Y-%m-%d %H:%M:%S')"
