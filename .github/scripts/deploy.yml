@@ -1,0 +1,35 @@
+name: Remote Deploy on Merge
+on:
+  push:
+    branches: [ feat/simple-deploy ]
+    # branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Read deploy script into environment
+        id: load_script
+        run: |
+          # Read the file and store it inside a safe multiline environment variable
+          {
+            echo "SCRIPT_BODY<<EOF"
+            cat .github/scripts/deploy.sh
+            echo "EOF"
+          } >> "$GITHUB_ENV"
+
+      - name: Execute Script over SSH
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.LIGHTSAIL_IP }}
+          username: ubuntu
+          key: ${{ secrets.LIGHTSAIL_SSH_KEY }}
+          script_stop: true
+          ssh-agent: true
+          envs: SCRIPT_BODY
+          script: |
+            # Execute the string stored in the environment variable on Lightsail
+            echo "$SCRIPT_BODY" | bash
