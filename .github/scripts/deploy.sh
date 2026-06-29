@@ -14,7 +14,7 @@ exec > >(tee -a "$LOG_FILE") 2>&1
 
 echo "========================================="
 echo "DEPLOY START: $(date '+%Y-%m-%d %H:%M:%S')"
-echo "========================================="
+echo "-========================================"
 
 echo "-> 1. Cloning repository copy into fresh directory..."
 mkdir -p "$BASE_DIR"
