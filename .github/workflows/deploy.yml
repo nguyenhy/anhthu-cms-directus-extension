@@ -21,6 +21,7 @@ jobs:
           host: ${{ secrets.LIGHTSAIL_IP }}
           username: ubuntu
           key: ${{ secrets.LIGHTSAIL_SSH_KEY }}
+          passphrase: ${{ secrets.LIGHTSAIL_PASSPHRASE }}
           proxy_command: /usr/local/bin/cloudflared access ssh --hostname ${{ secrets.LIGHTSAIL_IP }}
           script: |
             cat << 'ENGINE_EOF' | bash
