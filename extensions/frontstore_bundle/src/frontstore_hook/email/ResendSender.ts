@@ -1,20 +1,32 @@
 import { CreateEmailResponse, Resend } from "resend";
-import { EmailSender, RawEmailMsg, TemplateEmailMsg } from "./esp";
+import { EmailIdentity, emailIdentityToString } from "./esp";
 
-export class ResendSender implements EmailSender<
-  CreateEmailResponse,
-  CreateEmailResponse
-> {
+export interface RawEmailMsg {
+  from: EmailIdentity;
+  to: EmailIdentity;
+  subject: string;
+  html: string;
+  preview?: string;
+}
+
+export interface TemplateEmailMsg {
+  from: EmailIdentity;
+  to: EmailIdentity;
+  templateId: string;
+  variables: Record<string, string>;
+}
+
+export class ResendSender {
   private resend: Resend;
 
   constructor(apiToken: string) {
     this.resend = new Resend(apiToken);
   }
 
-  async sendRaw(msg: RawEmailMsg) {
+  async sendRaw(msg: RawEmailMsg): Promise<CreateEmailResponse> {
     const result = await this.resend.emails.send({
-      from: msg.from,
-      to: [msg.to],
+      from: emailIdentityToString(msg.from),
+      to: [emailIdentityToString(msg.to)],
       subject: msg.subject,
       html: msg.html,
     });
@@ -29,8 +41,8 @@ export class ResendSender implements EmailSender<
 
   async sendTemplate(msg: TemplateEmailMsg): Promise<CreateEmailResponse> {
     const result = await this.resend.emails.send({
-      from: msg.from,
-      to: [msg.to],
+      from: emailIdentityToString(msg.from),
+      to: [emailIdentityToString(msg.to)],
       template: {
         id: msg.templateId,
         variables: msg.variables,

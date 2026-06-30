@@ -3,8 +3,9 @@ import { randomUUID } from "node:crypto";
 import { parseHookEnvConfig } from "./config";
 import { useBuyerVerificationEmail } from "./buyer/useSendBuyerVerificationEmail";
 import { useConfirmPaymentEmail } from "./buyer/useSendConfirmPaymentEmail";
-import { ResendSender } from "./email/ResendSender";
-import { ResendEmailDispatcher } from "./email/ResendEmailDispatcher";
+import { BrevoEmailDispatcher } from "./email/BrevoEmailDispatcher";
+import { BrevoSender } from "./email/BrevoSender";
+import { createLogger } from "../lib/logger";
 
 export default defineHook((register, context) => {
   const { action } = register;
@@ -19,8 +20,13 @@ export default defineHook((register, context) => {
     return;
   }
 
-  const dispatcher = new ResendEmailDispatcher(
-    new ResendSender(configResult.data.resendApiToken),
+  const dispatcher = new BrevoEmailDispatcher(
+    new BrevoSender(configResult.data.brevoApiToken, () =>
+      createLogger({
+        consoleInfo: (...args: unknown[]) => context.logger.info([...args]),
+        consoleError: (...args: unknown[]) => context.logger.error([...args]),
+      }),
+    ),
     configResult.data.emailFrom,
   );
 

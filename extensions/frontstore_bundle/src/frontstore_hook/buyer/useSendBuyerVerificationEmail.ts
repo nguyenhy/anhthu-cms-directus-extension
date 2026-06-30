@@ -1,5 +1,4 @@
 import { buildSlugUrl } from "../../lib/buildUrl";
-import { type defineHook } from "@directus/extensions-sdk";
 import { type HookEnvConfig } from "../config";
 import { nanoid } from "nanoid";
 import { isObject, isString } from "../utils/extract";
@@ -7,14 +6,10 @@ import {
   EmailVerificationHtmlVar,
   useParseEmailVerification,
 } from "../email/emailVerification";
+import { HookExtensionContext, EventContext } from "../types/hook";
 
 import { Liquid } from "liquidjs";
-
-type HookConfig = Parameters<typeof defineHook>[0];
-type RegisterFunctions = Parameters<HookConfig>[0];
-type HookExtensionContext = Parameters<HookConfig>[1];
-type ActionHandler = Parameters<RegisterFunctions["action"]>[1];
-type EventContext = Parameters<ActionHandler>[1];
+import { EmailIdentity } from "../email/esp";
 
 export type BuyerVerificationEmailCommand = {
   buyerId: string;
@@ -27,11 +22,14 @@ type Deps = {
   services: HookExtensionContext["services"];
   logger: HookExtensionContext["logger"];
   config: HookEnvConfig;
-  sendEmail: (to: string, vars: EmailVerificationHtmlVar) => Promise<unknown>;
+  sendEmail: (
+    to: EmailIdentity,
+    vars: EmailVerificationHtmlVar,
+  ) => Promise<unknown>;
 };
 
 type PreparedEmail = {
-  to: string;
+  to: EmailIdentity;
   variables: EmailVerificationHtmlVar;
 };
 
@@ -143,11 +141,10 @@ export function useBuyerVerificationEmail(deps: Deps) {
     }
 
     return {
-      to: order.buyer
-        ? order.buyer.name
-          ? `${order.buyer.name} <${payload.email}>`
-          : payload.email
-        : payload.email,
+      to: {
+        email: payload.email,
+        name: order.buyer?.name,
+      },
       variables: {
         BRAND: brand,
         OTP_CODE: payload.code.verify_code,

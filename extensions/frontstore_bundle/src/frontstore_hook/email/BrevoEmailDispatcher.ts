@@ -1,28 +1,34 @@
-import { ResendSender } from "./ResendSender";
 import { EmailVerificationHtmlVar } from "./emailVerification";
 import { EmailConfirmPaymentHtmlVar } from "./emailConfirmPayment";
 import { EmailIdentity } from "./esp";
+import { BrevoSender } from "./BrevoSender";
 
-export class ResendEmailDispatcher {
+export class BrevoEmailDispatcher {
   constructor(
-    private sender: ResendSender,
+    private sender: BrevoSender,
     private from: EmailIdentity,
   ) {}
 
-  async sendVerificationEmail(to: EmailIdentity, vars: EmailVerificationHtmlVar) {
+  async sendVerificationEmail(
+    to: EmailIdentity,
+    vars: EmailVerificationHtmlVar,
+  ) {
     return this.sender.sendTemplate({
       from: this.from,
       to,
-      templateId: "simpla-user-email-verification",
+      templateId: 1,
       variables: vars,
     });
   }
 
-  async sendConfirmPaymentEmail(to: EmailIdentity, vars: EmailConfirmPaymentHtmlVar) {
+  async sendConfirmPaymentEmail(
+    to: EmailIdentity,
+    vars: EmailConfirmPaymentHtmlVar,
+  ) {
     return this.sender.sendTemplate({
       from: this.from,
       to,
-      templateId: "simpla-payment-confirmation",
+      templateId: 3,
       variables: vars,
     });
   }

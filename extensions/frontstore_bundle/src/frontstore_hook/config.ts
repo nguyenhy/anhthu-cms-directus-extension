@@ -1,6 +1,9 @@
+import { EmailIdentity, stringToEmailIdentity } from "./email/esp";
+
 export type HookEnvConfig = {
   resendApiToken: string;
-  emailFrom: string;
+  brevoApiToken: string;
+  emailFrom: EmailIdentity;
   brand: string;
   storeUrl: string;
   orderPathFormat: string;
@@ -11,6 +14,7 @@ type ParseResult =
   | { status: "success"; data: HookEnvConfig }
   | { status: "error"; errors: string[] };
 
+const brevoApiTokenEnv = "EMAIL_BREVO_API_KEY";
 const resendApiTokenEnv = "EMAIL_RESEND_API_KEY";
 const emailFromEnv = "EMAIL_FROM";
 const brandEnv = "EXTENSION_FRONTSTORE_BUNDLE_BRAND";
@@ -27,9 +31,22 @@ export function parseHookEnvConfig(env: Record<string, any>): ParseResult {
     errors.push(`${resendApiTokenEnv} missing`);
   }
 
-  const emailFrom = env[emailFromEnv];
-  if (!emailFrom) {
+  const brevoApiToken = env[brevoApiTokenEnv];
+  if (!brevoApiToken) {
+    errors.push(`${brevoApiTokenEnv} missing`);
+  }
+
+  const rawEmailFrom = env[emailFromEnv];
+  let emailFrom: EmailIdentity | null = null;
+
+  if (!rawEmailFrom) {
     errors.push(`${emailFromEnv} missing`);
+  } else {
+    try {
+      emailFrom = stringToEmailIdentity(String(rawEmailFrom));
+    } catch {
+      errors.push(`${emailFromEnv} invalid format`);
+    }
   }
 
   const brand = env[brandEnv];
@@ -52,7 +69,7 @@ export function parseHookEnvConfig(env: Record<string, any>): ParseResult {
     errors.push(`${storeUrlEnv} missing`);
   } else {
     try {
-      new URL(storeUrl);
+      new URL(String(storeUrl));
     } catch {
       errors.push(`${storeUrl} invalid URL`);
     }
@@ -65,12 +82,13 @@ export function parseHookEnvConfig(env: Record<string, any>): ParseResult {
   return {
     status: "success",
     data: {
-      resendApiToken,
-      emailFrom,
-      brand,
-      storeUrl,
-      orderPathFormat,
-      downloadPathFormat,
+      resendApiToken: String(resendApiToken),
+      brevoApiToken: String(brevoApiToken),
+      emailFrom: emailFrom!,
+      brand: String(brand),
+      storeUrl: String(storeUrl),
+      orderPathFormat: String(orderPathFormat),
+      downloadPathFormat: String(downloadPathFormat),
     },
   };
 }
