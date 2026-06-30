@@ -1,4 +1,4 @@
-import { Liquid, RenderOptions } from "liquidjs";
+import { Liquid } from "liquidjs";
 import { useParseEmailTemplate } from "./emailParser";
 
 export const emailVerificationHTML = () => {

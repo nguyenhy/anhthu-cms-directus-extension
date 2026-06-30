@@ -1,8 +1,11 @@
 import { defineHook } from "@directus/extensions-sdk";
 import { randomUUID } from "node:crypto";
 import { parseHookEnvConfig } from "./config";
-import { useSendBuyerVerificationEmail  } from "./buyer/useSendBuyerVerificationEmail";
-import { useSendConfirmPaymentEmail } from "./buyer/useSendConfirmPaymentEmail";
+import { useBuyerVerificationEmail } from "./buyer/useSendBuyerVerificationEmail";
+import { useConfirmPaymentEmail } from "./buyer/useSendConfirmPaymentEmail";
+import { BrevoEmailDispatcher } from "./email/BrevoEmailDispatcher";
+import { BrevoSender } from "./email/BrevoSender";
+import { createLogger } from "../lib/logger";
 
 export default defineHook((register, context) => {
   const { action } = register;
@@ -17,19 +20,33 @@ export default defineHook((register, context) => {
     return;
   }
 
-  const { execute: executeVerificationEmail } =
-    useSendBuyerVerificationEmail({
-      services,
-      logger,
-      config: configResult.data,
-    });
+  const dispatcher = new BrevoEmailDispatcher(
+    new BrevoSender(configResult.data.brevoApiToken, () =>
+      createLogger({
+        consoleInfo: (...args: unknown[]) => context.logger.info([...args]),
+        consoleError: (...args: unknown[]) => context.logger.error([...args]),
+      }),
+    ),
+    configResult.data.emailFrom,
+    {
+      verification: configResult.data.brevoVerificationTemplateId,
+      confirmPayment: configResult.data.brevoConfirmPaymentTemplateId,
+    },
+  );
 
-  const { execute: executeConfirmPaymentEmail } =
-    useSendConfirmPaymentEmail({
-      services,
-      logger,
-      config: configResult.data,
-    });
+  const { sendDirect: sendVerificationEmail } = useBuyerVerificationEmail({
+    services,
+    logger,
+    config: configResult.data,
+    sendEmail: (to, vars) => dispatcher.sendVerificationEmail(to, vars),
+  });
+
+  const { sendDirect: sendConfirmPaymentEmail } = useConfirmPaymentEmail({
+    services,
+    logger,
+    config: configResult.data,
+    sendEmail: (to, vars) => dispatcher.sendConfirmPaymentEmail(to, vars),
+  });
 
   action("items.create", async (meta, ctx) => {
     const logId = randomUUID();
@@ -43,7 +60,7 @@ export default defineHook((register, context) => {
           return;
         }
 
-        await executeVerificationEmail(
+        await sendVerificationEmail(
           {
             buyerId: id,
             email: meta.payload.email,
@@ -74,13 +91,7 @@ export default defineHook((register, context) => {
           return;
         }
 
-        await executeConfirmPaymentEmail(
-          {
-            orderFulfillmentId: id,
-          },
-          ctx,
-          logId,
-        );
+        await sendConfirmPaymentEmail({ orderFulfillmentId: id }, ctx, logId);
       } catch (error) {
         logger.error([
           logId,
@@ -129,36 +140,12 @@ export default defineHook((register, context) => {
           return;
         }
 
-        await executeVerificationEmail(
+        await sendVerificationEmail(
           {
             buyerId: id,
             email: buyer.email,
             verifyCode: meta.payload.verify_code,
             verifyExpiresAt: meta.payload.verify_expires_at,
-          },
-          ctx,
-          logId,
-        );
-      } catch (error) {
-        logger.error([logId, "error", String(error)]);
-      }
-    } else if (meta.collection === "order_fulfillment") {
-      logger.info([
-        logId,
-        `[frontstore_hook] items.update`,
-        meta.collection,
-        meta,
-      ]);
-      try {
-        const id = meta.keys?.[0];
-        if (!id) {
-          logger.error([logId, "meta.key"]);
-          return;
-        }
-
-        await executeConfirmPaymentEmail(
-          {
-            orderFulfillmentId: id,
           },
           ctx,
           logId,
