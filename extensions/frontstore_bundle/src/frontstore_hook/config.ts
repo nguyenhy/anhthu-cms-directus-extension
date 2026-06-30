@@ -1,6 +1,7 @@
 export type HookEnvConfig = {
   resendApiToken: string;
   emailFrom: string;
+  brand: string;
   storeUrl: string;
   orderPathFormat: string;
   downloadPathFormat: string;
@@ -10,8 +11,9 @@ type ParseResult =
   | { status: "success"; data: HookEnvConfig }
   | { status: "error"; errors: string[] };
 
-const resendApiTokenEnv = "EMAIL_SMTP_PASSWORD";
+const resendApiTokenEnv = "EMAIL_RESEND_API_KEY";
 const emailFromEnv = "EMAIL_FROM";
+const brandEnv = "EXTENSION_FRONTSTORE_BUNDLE_BRAND";
 const orderPathFormatEnv = "EXTENSION_FRONTSTORE_BUNDLE_FORMAT_PATH_ORDER";
 const downloadPathFormatEnv =
   "EXTENSION_FRONTSTORE_BUNDLE_FORMAT_PATH_DOWNLOAD";
@@ -28,6 +30,11 @@ export function parseHookEnvConfig(env: Record<string, any>): ParseResult {
   const emailFrom = env[emailFromEnv];
   if (!emailFrom) {
     errors.push(`${emailFromEnv} missing`);
+  }
+
+  const brand = env[brandEnv];
+  if (!brand) {
+    errors.push(`${brandEnv} missing`);
   }
 
   const orderPathFormat = env[orderPathFormatEnv];
@@ -60,6 +67,7 @@ export function parseHookEnvConfig(env: Record<string, any>): ParseResult {
     data: {
       resendApiToken,
       emailFrom,
+      brand,
       storeUrl,
       orderPathFormat,
       downloadPathFormat,

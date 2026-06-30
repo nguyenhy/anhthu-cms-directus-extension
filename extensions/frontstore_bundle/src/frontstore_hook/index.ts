@@ -1,8 +1,10 @@
 import { defineHook } from "@directus/extensions-sdk";
 import { randomUUID } from "node:crypto";
 import { parseHookEnvConfig } from "./config";
-import { useSendBuyerVerificationEmail  } from "./buyer/useSendBuyerVerificationEmail";
-import { useSendConfirmPaymentEmail } from "./buyer/useSendConfirmPaymentEmail";
+import { useBuyerVerificationEmail } from "./buyer/useSendBuyerVerificationEmail";
+import { useConfirmPaymentEmail } from "./buyer/useSendConfirmPaymentEmail";
+import { ResendSender } from "./email/ResendSender";
+import { ResendEmailDispatcher } from "./email/ResendEmailDispatcher";
 
 export default defineHook((register, context) => {
   const { action } = register;
@@ -17,19 +19,24 @@ export default defineHook((register, context) => {
     return;
   }
 
-  const { execute: executeVerificationEmail } =
-    useSendBuyerVerificationEmail({
-      services,
-      logger,
-      config: configResult.data,
-    });
+  const dispatcher = new ResendEmailDispatcher(
+    new ResendSender(configResult.data.resendApiToken),
+    configResult.data.emailFrom,
+  );
 
-  const { execute: executeConfirmPaymentEmail } =
-    useSendConfirmPaymentEmail({
-      services,
-      logger,
-      config: configResult.data,
-    });
+  const { sendDirect: sendVerificationEmail } = useBuyerVerificationEmail({
+    services,
+    logger,
+    config: configResult.data,
+    sendEmail: (to, vars) => dispatcher.sendVerificationEmail(to, vars),
+  });
+
+  const { sendDirect: sendConfirmPaymentEmail } = useConfirmPaymentEmail({
+    services,
+    logger,
+    config: configResult.data,
+    sendEmail: (to, vars) => dispatcher.sendConfirmPaymentEmail(to, vars),
+  });
 
   action("items.create", async (meta, ctx) => {
     const logId = randomUUID();
@@ -43,7 +50,7 @@ export default defineHook((register, context) => {
           return;
         }
 
-        await executeVerificationEmail(
+        await sendVerificationEmail(
           {
             buyerId: id,
             email: meta.payload.email,
@@ -74,13 +81,7 @@ export default defineHook((register, context) => {
           return;
         }
 
-        await executeConfirmPaymentEmail(
-          {
-            orderFulfillmentId: id,
-          },
-          ctx,
-          logId,
-        );
+        await sendConfirmPaymentEmail({ orderFulfillmentId: id }, ctx, logId);
       } catch (error) {
         logger.error([
           logId,
@@ -129,7 +130,7 @@ export default defineHook((register, context) => {
           return;
         }
 
-        await executeVerificationEmail(
+        await sendVerificationEmail(
           {
             buyerId: id,
             email: buyer.email,
@@ -156,13 +157,7 @@ export default defineHook((register, context) => {
           return;
         }
 
-        await executeConfirmPaymentEmail(
-          {
-            orderFulfillmentId: id,
-          },
-          ctx,
-          logId,
-        );
+        await sendConfirmPaymentEmail({ orderFulfillmentId: id }, ctx, logId);
       } catch (error) {
         logger.error([logId, "error", String(error)]);
       }

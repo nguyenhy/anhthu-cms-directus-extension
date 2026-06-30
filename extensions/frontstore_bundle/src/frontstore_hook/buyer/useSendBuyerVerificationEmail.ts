@@ -1,16 +1,13 @@
-import { Resend } from "resend";
 import { buildSlugUrl } from "../../lib/buildUrl";
-import {
-  parseEmailVerificationPayload,
-  sendBuyerEmailVerification,
-} from "./sendBuyerEmailVerification";
 import { type defineHook } from "@directus/extensions-sdk";
 import { type HookEnvConfig } from "../config";
 import { nanoid } from "nanoid";
+import { isObject, isString } from "../utils/extract";
 import {
-  EmailVerificationParsedVar,
+  EmailVerificationHtmlVar,
   useParseEmailVerification,
 } from "../email/emailVerification";
+
 import { Liquid } from "liquidjs";
 
 type HookConfig = Parameters<typeof defineHook>[0];
@@ -19,7 +16,7 @@ type HookExtensionContext = Parameters<HookConfig>[1];
 type ActionHandler = Parameters<RegisterFunctions["action"]>[1];
 type EventContext = Parameters<ActionHandler>[1];
 
-export type SendBuyerVerificationEmailCommand = {
+export type BuyerVerificationEmailCommand = {
   buyerId: string;
   email: string;
   verifyCode: unknown;
@@ -30,90 +27,80 @@ type Deps = {
   services: HookExtensionContext["services"];
   logger: HookExtensionContext["logger"];
   config: HookEnvConfig;
+  sendEmail: (to: string, vars: EmailVerificationHtmlVar) => Promise<unknown>;
 };
 
-export function useSendBuyerVerificationEmail(deps: Deps) {
-  const { services, logger, config } = deps;
-  const { resendApiToken, emailFrom, storeUrl, orderPathFormat } = config;
+type PreparedEmail = {
+  to: string;
+  variables: EmailVerificationHtmlVar;
+};
 
-  async function execute(
-    cmd: SendBuyerVerificationEmailCommand,
-    ctx: EventContext,
-    logId: string,
-  ): Promise<void> {
-    const payload = parseEmailVerificationPayload({
-      verify_expires_at: cmd.verifyExpiresAt,
-      verify_code: cmd.verifyCode,
-      email: cmd.email,
-    });
+type VerificationCode = {
+  verify_expires_at: Date;
+  verify_code: string;
+  duration: number;
+};
 
-    if (payload.status === "error") {
-      logger.error([logId, "[frontstore_hook] payload.invalid", payload.msg]);
-      return;
-    }
-
-    if (!ctx.schema) {
-      logger.error(logId, ["[frontstore_hook] execute.schema"]);
-      return;
-    }
-
-    const orderSv = new services.ItemsService<{
-      id: string;
-      slug: string;
-      order_id: string;
-    }>("order", {
-      knex: ctx.database,
-      schema: ctx.schema,
-      accountability: ctx.accountability,
-    });
-
-    const orders = await orderSv.readByQuery({
-      fields: ["id", "slug", "order_id"],
-      filter: { buyer: { _eq: cmd.buyerId } },
-      limit: 1,
-    });
-
-    const order = orders?.[0] || null;
-    if (!order) {
-      logger.error([logId, "[frontstore_hook] order.not_found", cmd.buyerId]);
-      return;
-    }
-
-    try {
-      const resend = new Resend(resendApiToken);
-      await sendBuyerEmailVerification({
-        resend,
-        mailFrom: emailFrom,
-        mailTo: payload.email,
-        code: payload.code,
-        order: {
-          order_id: order.order_id,
-          order_url: buildSlugUrl(order.slug, storeUrl, orderPathFormat),
-        },
-        logId,
-        logger,
-      });
-      logger.info([logId, "[frontstore_hook] success"]);
-    } catch (error) {
-      logger.error([logId, "[frontstore_hook] error", String(error)]);
-    }
+const parseVerificationPayload = (payload: {
+  verify_expires_at: unknown;
+  verify_code: unknown;
+  email: unknown;
+}):
+  | { status: "success"; code: VerificationCode; email: string }
+  | { status: "error"; msg: string } => {
+  if (!isObject(payload)) {
+    return { status: "error", msg: "payload_empty" };
   }
 
-  return { execute };
-}
+  const verify_expires_at = isString(payload.verify_expires_at)
+    ? payload.verify_expires_at
+    : "";
+  const verify_code = isString(payload.verify_code) ? payload.verify_code : "";
+  const email = isString(payload.email) ? payload.email : "";
 
-export function useCreateBuyerVerificationEmailSending(deps: Deps) {
-  const { services, logger, config } = deps;
-  const { storeUrl, orderPathFormat } = config;
+  if (!email) {
+    return { status: "error", msg: "email.empty" };
+  }
+
+  if (!verify_expires_at) {
+    return { status: "error", msg: "verify_expires_at.empty" };
+  }
+
+  if (!verify_code) {
+    return { status: "error", msg: "verify_code.empty" };
+  }
+
+  const verifyExpiresDate = new Date(verify_expires_at);
+  if (isNaN(verifyExpiresDate.valueOf())) {
+    return { status: "error", msg: "verify_expires_at.NaN" };
+  }
+
+  const duration = Math.ceil(
+    (verifyExpiresDate.valueOf() - Date.now()) / (1000 * 60),
+  );
+  if (!(duration > 0)) {
+    return { status: "error", msg: "verify_expires_at.expired" };
+  }
+
+  return {
+    status: "success",
+    email,
+    code: { verify_expires_at: verifyExpiresDate, verify_code, duration },
+  };
+};
+
+export function useBuyerVerificationEmail(deps: Deps) {
+  const { services, logger, config, sendEmail } = deps;
+  const { brand, storeUrl, orderPathFormat } = config;
   const liquid = new Liquid();
   const mail = useParseEmailVerification(liquid);
 
-  async function execute(
-    cmd: SendBuyerVerificationEmailCommand,
+  async function prepare(
+    cmd: BuyerVerificationEmailCommand,
     ctx: EventContext,
     logId: string,
-  ): Promise<void> {
-    const payload = parseEmailVerificationPayload({
+  ): Promise<PreparedEmail | null> {
+    const payload = parseVerificationPayload({
       verify_expires_at: cmd.verifyExpiresAt,
       verify_code: cmd.verifyCode,
       email: cmd.email,
@@ -121,18 +108,22 @@ export function useCreateBuyerVerificationEmailSending(deps: Deps) {
 
     if (payload.status === "error") {
       logger.error([logId, "[frontstore_hook] payload.invalid", payload.msg]);
-      return;
+      return null;
     }
 
     if (!ctx.schema) {
       logger.error(logId, ["[frontstore_hook] execute.schema"]);
-      return;
+      return null;
     }
 
     const orderSv = new services.ItemsService<{
       id: string;
       slug: string;
       order_id: string;
+      buyer: {
+        email: string;
+        name?: string;
+      } | null;
     }>("order", {
       knex: ctx.database,
       schema: ctx.schema,
@@ -140,7 +131,7 @@ export function useCreateBuyerVerificationEmailSending(deps: Deps) {
     });
 
     const orders = await orderSv.readByQuery({
-      fields: ["id", "slug", "order_id"],
+      fields: ["id", "slug", "order_id", "buyer.email", "buyer.name"],
       filter: { buyer: { _eq: cmd.buyerId } },
       limit: 1,
     });
@@ -148,52 +139,87 @@ export function useCreateBuyerVerificationEmailSending(deps: Deps) {
     const order = orders?.[0] || null;
     if (!order) {
       logger.error([logId, "[frontstore_hook] order.not_found", cmd.buyerId]);
-      return;
+      return null;
     }
 
-    const order_url = buildSlugUrl(order.slug, storeUrl, orderPathFormat);
-    let parsed: EmailVerificationParsedVar | null = null;
+    return {
+      to: order.buyer
+        ? order.buyer.name
+          ? `${order.buyer.name} <${payload.email}>`
+          : payload.email
+        : payload.email,
+      variables: {
+        BRAND: brand,
+        OTP_CODE: payload.code.verify_code,
+        OTP_EXPIRES_MINUTES: payload.code.duration.toString(),
+        USER_EMAIL: payload.email,
+        YEAR: new Date().getFullYear().toString(),
+        ORDER_ID: order.order_id,
+        ORDER_URL: buildSlugUrl(order.slug, storeUrl, orderPathFormat),
+      },
+    };
+  }
+
+  async function sendDirect(
+    cmd: BuyerVerificationEmailCommand,
+    ctx: EventContext,
+    logId: string,
+  ): Promise<void> {
+    const data = await prepare(cmd, ctx, logId);
+    if (!data) return;
 
     try {
-      parsed = await mail.parse({
-        html: {
-          YEAR: new Date().getFullYear().toString(),
-          USER_EMAIL: payload.email,
-          BRAND: "Simpla",
-          ORDER_ID: order.order_id,
-          ORDER_URL: order_url,
-          OTP_CODE: payload.code.verify_code,
-          OTP_EXPIRES_MINUTES: payload.code.duration.toString(),
-        },
-        subject: {
-          ORDER_ID: order.order_id,
-        },
-        preview: {},
-      });
+      const result = await sendEmail(data.to, data.variables);
+      logger.info([logId, "[frontstore_hook] sendDirect.success", result]);
     } catch (error) {
-      logger.error([logId, "[frontstore_hook] parse.error", String(error)]);
-      return;
-    }
-
-    try {
-      const sendingSv = new services.ItemsService("email_sending", {
-        knex: ctx.database,
-        schema: ctx.schema,
-        accountability: ctx.accountability,
-      });
-      const slug = nanoid(64);
-      const res = await sendingSv.createOne({
-        slug: slug,
-        to: payload.email,
-        subject: parsed.subject,
-        preview: parsed.preview,
-        html: parsed.html,
-      });
-      logger.info([logId, "[frontstore_hook] success", res.toString()]);
-    } catch (error) {
-      logger.error([logId, "[frontstore_hook] error", String(error)]);
+      logger.error([
+        logId,
+        "[frontstore_hook] sendDirect.error",
+        String(error),
+      ]);
+      await saveRecord(ctx, logId, data, String(error));
     }
   }
 
-  return { execute };
+  async function saveRecord(
+    ctx: EventContext,
+    logId: string,
+    data: PreparedEmail,
+    reason?: string,
+  ): Promise<void> {
+    try {
+      const parsed = await mail.parse({
+        html: data.variables,
+        subject: { ORDER_ID: data.variables.ORDER_ID },
+        preview: {},
+      });
+
+      const sendingSv = new services.ItemsService("email_sending", {
+        knex: ctx.database,
+        schema: ctx.schema!,
+        accountability: ctx.accountability,
+      });
+      const res = await sendingSv.createOne({
+        slug: nanoid(64),
+        to: data.to,
+        subject: parsed.subject,
+        preview: parsed.preview,
+        html: parsed.html,
+        reason,
+      });
+      logger.info([
+        logId,
+        "[frontstore_hook] saveRecord.success",
+        res.toString(),
+      ]);
+    } catch (error) {
+      logger.error([
+        logId,
+        "[frontstore_hook] saveRecord.error",
+        String(error),
+      ]);
+    }
+  }
+
+  return { sendDirect };
 }
