@@ -34,7 +34,8 @@ jobs:
           cd ../deploy_workspace
           
           mkdir -p frontstore_bundle/dist
-          cp -r $GITHUB_WORKSPACE/extensions/frontstore_bundle/dist/* frontstore_bundle/dist/
+          cp -r $GITHUB_WORKSPACE/extensions/frontstore_bundle/dist/*       frontstore_bundle/dist/
+          cp -r $GITHUB_WORKSPACE/extensions/frontstore_bundle/package.json frontstore_bundle/
           
           git init
           git config user.name "github-actions[bot]"
