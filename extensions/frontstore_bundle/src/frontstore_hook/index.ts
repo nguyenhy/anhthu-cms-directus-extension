@@ -1,8 +1,8 @@
 import { defineHook } from "@directus/extensions-sdk";
 import { randomUUID } from "node:crypto";
 import { parseHookEnvConfig } from "./config";
-import { useCreateBuyerVerificationEmailSending } from "./buyer/useSendBuyerVerificationEmail";
-import { useCreateConfirmPaymentEmailSending } from "./buyer/useSendConfirmPaymentEmail";
+import { useSendBuyerVerificationEmail  } from "./buyer/useSendBuyerVerificationEmail";
+import { useSendConfirmPaymentEmail } from "./buyer/useSendConfirmPaymentEmail";
 
 export default defineHook((register, context) => {
   const { action } = register;
@@ -18,14 +18,14 @@ export default defineHook((register, context) => {
   }
 
   const { execute: executeVerificationEmail } =
-    useCreateBuyerVerificationEmailSending({
+    useSendBuyerVerificationEmail({
       services,
       logger,
       config: configResult.data,
     });
 
   const { execute: executeConfirmPaymentEmail } =
-    useCreateConfirmPaymentEmailSending({
+    useSendConfirmPaymentEmail({
       services,
       logger,
       config: configResult.data,
