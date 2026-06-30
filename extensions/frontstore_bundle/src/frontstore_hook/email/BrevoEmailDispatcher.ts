@@ -3,10 +3,16 @@ import { EmailConfirmPaymentHtmlVar } from "./emailConfirmPayment";
 import { EmailIdentity } from "./esp";
 import { BrevoSender } from "./BrevoSender";
 
+type TemplateIds = {
+  verification: number;
+  confirmPayment: number;
+};
+
 export class BrevoEmailDispatcher {
   constructor(
     private sender: BrevoSender,
     private from: EmailIdentity,
+    private templateIds: TemplateIds,
   ) {}
 
   async sendVerificationEmail(
@@ -16,7 +22,7 @@ export class BrevoEmailDispatcher {
     return this.sender.sendTemplate({
       from: this.from,
       to,
-      templateId: 1,
+      templateId: this.templateIds.verification,
       variables: vars,
     });
   }
@@ -28,7 +34,7 @@ export class BrevoEmailDispatcher {
     return this.sender.sendTemplate({
       from: this.from,
       to,
-      templateId: 3,
+      templateId: this.templateIds.confirmPayment,
       variables: vars,
     });
   }

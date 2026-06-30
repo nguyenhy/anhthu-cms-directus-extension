@@ -95,13 +95,8 @@ export function useBrevoClient(config: BrevoConfig): BrevoClient {
         headers: requestHeaders,
         body: JSON.stringify(finalPayload),
       };
-      logger.info([
-        "[brevo] >>",
-        req.method,
-        url.toString(),
-        req.headers,
-        finalPayload,
-      ]);
+      const { "api-key": _secret, ...safeHeaders } = requestHeaders;
+      logger.info(["[brevo] >>", req.method, url, safeHeaders]);
       const response = await fetch(url, req);
       logger.info(["[brevo] <<", response.status]);
 

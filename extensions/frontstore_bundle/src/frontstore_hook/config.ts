@@ -2,7 +2,13 @@ import { EmailIdentity, stringToEmailIdentity } from "./email/esp";
 
 export type HookEnvConfig = {
   resendApiToken: string;
+  resendVerificationTemplateId: string;
+  resendConfirmPaymentTemplateId: string;
+
   brevoApiToken: string;
+  brevoVerificationTemplateId: number;
+  brevoConfirmPaymentTemplateId: number;
+
   emailFrom: EmailIdentity;
   brand: string;
   storeUrl: string;
@@ -15,7 +21,15 @@ type ParseResult =
   | { status: "error"; errors: string[] };
 
 const brevoApiTokenEnv = "EMAIL_BREVO_API_KEY";
+const brevoVerificationTemplateIdEnv = "EMAIL_BREVO_VERIFICATION_TEMPLATE_ID";
+const brevoConfirmPaymentTemplateIdEnv =
+  "EMAIL_BREVO_CONFIRMPAYMENT_TEMPLATE_ID";
+
 const resendApiTokenEnv = "EMAIL_RESEND_API_KEY";
+const resendVerificationTemplateIdEnv = "EMAIL_RESEND_VERIFICATION_TEMPLATE_ID";
+const resendConfirmPaymentTemplateIdEnv =
+  "EMAIL_RESEND_CONFIRMPAYMENT_TEMPLATE_ID";
+
 const emailFromEnv = "EMAIL_FROM";
 const brandEnv = "EXTENSION_FRONTSTORE_BUNDLE_BRAND";
 const orderPathFormatEnv = "EXTENSION_FRONTSTORE_BUNDLE_FORMAT_PATH_ORDER";
@@ -34,6 +48,23 @@ export function parseHookEnvConfig(env: Record<string, any>): ParseResult {
   const brevoApiToken = env[brevoApiTokenEnv];
   if (!brevoApiToken) {
     errors.push(`${brevoApiTokenEnv} missing`);
+  }
+  const resendVerificationTemplateId = env[resendVerificationTemplateIdEnv];
+  if (!resendVerificationTemplateId) {
+    errors.push(`${resendVerificationTemplateIdEnv} missing`);
+  }
+  const resendConfirmPaymentTemplateId = env[resendConfirmPaymentTemplateIdEnv];
+  if (!resendConfirmPaymentTemplateId) {
+    errors.push(`${resendConfirmPaymentTemplateIdEnv} missing`);
+  }
+
+  const brevoVerificationTemplateId = env[brevoVerificationTemplateIdEnv];
+  if (!brevoVerificationTemplateId) {
+    errors.push(`${brevoVerificationTemplateIdEnv} missing`);
+  }
+  const brevoConfirmPaymentTemplateId = env[brevoConfirmPaymentTemplateIdEnv];
+  if (!brevoConfirmPaymentTemplateId) {
+    errors.push(`${brevoConfirmPaymentTemplateIdEnv} missing`);
   }
 
   const rawEmailFrom = env[emailFromEnv];
@@ -82,7 +113,13 @@ export function parseHookEnvConfig(env: Record<string, any>): ParseResult {
     status: "success",
     data: {
       resendApiToken: String(resendApiToken),
+      resendVerificationTemplateId: String(resendVerificationTemplateId),
+      resendConfirmPaymentTemplateId: String(resendConfirmPaymentTemplateId),
+
       brevoApiToken: String(brevoApiToken),
+      brevoVerificationTemplateId: Number(brevoVerificationTemplateId),
+      brevoConfirmPaymentTemplateId: Number(brevoConfirmPaymentTemplateId),
+
       emailFrom: emailFrom!,
       brand: String(brand),
       storeUrl: String(storeUrl),

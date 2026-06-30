@@ -28,6 +28,10 @@ export default defineHook((register, context) => {
       }),
     ),
     configResult.data.emailFrom,
+    {
+      verification: configResult.data.brevoVerificationTemplateId,
+      confirmPayment: configResult.data.brevoConfirmPaymentTemplateId,
+    },
   );
 
   const { sendDirect: sendVerificationEmail } = useBuyerVerificationEmail({

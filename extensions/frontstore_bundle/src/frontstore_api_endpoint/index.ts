@@ -128,13 +128,13 @@ export default defineEndpoint(async (router, context) => {
         ],
       });
       context.logger.info(order);
+      return res.status(200).json({
+        slug: slug,
+      });
     } catch (error) {
       context.logger.error(error);
+      return res.status(500).json();
     }
-
-    return res.status(200).json({
-      slug: slug,
-    });
   });
 
   type TemplateItem = {
@@ -326,7 +326,12 @@ export default defineEndpoint(async (router, context) => {
       return res.status(404).send();
     }
 
-    return res.send(item.html);
+    return res
+      .setHeader(
+        "Content-Security-Policy",
+        "default-src 'none'; style-src 'unsafe-inline'",
+      )
+      .send(item.html);
   });
 
   router.post("/support_ticket/new", async (_req, res) => {
@@ -513,7 +518,14 @@ export default defineEndpoint(async (router, context) => {
         });
         paymentMethods = await pmSv.readByQuery({
           ...(version ? { version } : {}),
-          fields: ["name", "type", "logo", "account_name", "account_number", "note"],
+          fields: [
+            "name",
+            "type",
+            "logo",
+            "account_name",
+            "account_number",
+            "note",
+          ],
         });
       } catch (error) {
         context.logger.error(error);
@@ -703,7 +715,10 @@ export default defineEndpoint(async (router, context) => {
     const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString();
 
     const schema = await context.getSchema();
-    const orderSv = new ItemsService("order", { schema, knex: context.database });
+    const orderSv = new ItemsService("order", {
+      schema,
+      knex: context.database,
+    });
 
     try {
       await orderSv.updateOne(raw.id, {
@@ -732,7 +747,10 @@ export default defineEndpoint(async (router, context) => {
     const expiresAt = new Date(now.valueOf() + 15 * 60 * 1000).toISOString();
 
     const schema = await context.getSchema();
-    const buyerSv = new ItemsService<BuyerItem>("buyer", { schema, knex: context.database });
+    const buyerSv = new ItemsService<BuyerItem>("buyer", {
+      schema,
+      knex: context.database,
+    });
 
     try {
       await buyerSv.updateOne(id, {
@@ -753,7 +771,10 @@ export default defineEndpoint(async (router, context) => {
     if (!id) return res.status(400).send();
 
     const schema = await context.getSchema();
-    const buyerSv = new ItemsService<BuyerItem>("buyer", { schema, knex: context.database });
+    const buyerSv = new ItemsService<BuyerItem>("buyer", {
+      schema,
+      knex: context.database,
+    });
 
     try {
       await buyerSv.updateOne(id, {
