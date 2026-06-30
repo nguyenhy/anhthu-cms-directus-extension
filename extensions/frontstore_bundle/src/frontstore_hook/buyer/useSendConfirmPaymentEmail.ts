@@ -194,7 +194,7 @@ export function useConfirmPaymentEmail(deps: Deps) {
         subject: parsed.subject,
         preview: parsed.preview,
         html: parsed.html,
-        reason: reason,
+        failure_reason: reason,
       });
       logger.info([
         logId,
