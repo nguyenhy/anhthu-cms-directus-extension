@@ -788,7 +788,7 @@ export default defineEndpoint(async (router, context) => {
     return res.status(200).json({});
   });
 
-  router.use((req, res, next) => {
+  router.use((_req, res) => {
     return res.status(404).send();
   });
 });

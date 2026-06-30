@@ -1,5 +1,4 @@
 import { Logger } from "../../lib/logger";
-import { HookExtensionContext } from "../types/hook";
 import { BrevoClient, useBrevoClient } from "./BrevoClient";
 import { EmailIdentity, toEmailIdentity } from "./esp";
 
