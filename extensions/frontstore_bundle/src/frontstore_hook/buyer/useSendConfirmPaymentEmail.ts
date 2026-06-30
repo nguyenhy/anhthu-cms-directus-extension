@@ -137,8 +137,8 @@ export function useConfirmPaymentEmail(deps: Deps) {
         ),
         DISCOUNT: "",
         TOTAL_PAID: formatMoney(
-          +match.order.template.product.price,
-          match.order.template.product.currency,
+          +match.user_payment.amount,
+          match.user_payment.currency,
         ),
         DOWNLOAD_URL: buildSlugUrl(
           match.order.slug,
