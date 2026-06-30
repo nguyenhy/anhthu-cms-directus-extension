@@ -153,24 +153,6 @@ export default defineHook((register, context) => {
       } catch (error) {
         logger.error([logId, "error", String(error)]);
       }
-    } else if (meta.collection === "order_fulfillment") {
-      logger.info([
-        logId,
-        `[frontstore_hook] items.update`,
-        meta.collection,
-        meta,
-      ]);
-      try {
-        const id = meta.keys?.[0];
-        if (!id) {
-          logger.error([logId, "meta.key"]);
-          return;
-        }
-
-        await sendConfirmPaymentEmail({ orderFulfillmentId: id }, ctx, logId);
-      } catch (error) {
-        logger.error([logId, "error", String(error)]);
-      }
     }
   });
 });
