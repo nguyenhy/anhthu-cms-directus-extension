@@ -33,6 +33,7 @@
 		"host": "^10.10.0"
 	},
 	"scripts": {
+		"test": "tsc --noEmit",
 		"build": "directus-extension build",
 		"dev": "CHOKIDAR_USEPOLLING=true directus-extension build -w --no-minify",
 		"link": "directus-extension link",
