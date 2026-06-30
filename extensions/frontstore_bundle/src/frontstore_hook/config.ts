@@ -42,9 +42,8 @@ export function parseHookEnvConfig(env: Record<string, any>): ParseResult {
   if (!rawEmailFrom) {
     errors.push(`${emailFromEnv} missing`);
   } else {
-    try {
-      emailFrom = stringToEmailIdentity(String(rawEmailFrom));
-    } catch {
+    emailFrom = stringToEmailIdentity(String(rawEmailFrom));
+    if (!emailFrom) {
       errors.push(`${emailFromEnv} invalid format`);
     }
   }
