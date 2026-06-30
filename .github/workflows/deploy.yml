@@ -22,6 +22,22 @@ jobs:
           corepack enable
           corepack prepare pnpm@latest --activate
 
+      # Get pnpm store directory path dynamically
+      - name: Get Pnpm Store Directory
+        id: pnpm-cache
+        run: |
+          echo "STORE_PATH=$(pnpm store path)" >> $GITHUB_OUTPUT
+
+      # Setup Once and Forget Cache Action
+      - name: Setup Pnpm Cache
+        uses: actions/cache@v6
+        with:
+          path: ${{ steps.pnpm-cache.outputs.STORE_PATH }}
+          # Fallback to package.json files if lockfile is missing
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/package.json') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+
       - name: Install and Build Extensions
         run: |
           cd extensions/frontstore_bundle
