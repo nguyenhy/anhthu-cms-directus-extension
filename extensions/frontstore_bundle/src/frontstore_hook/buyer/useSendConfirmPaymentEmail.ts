@@ -174,7 +174,7 @@ export function useConfirmPaymentEmail(deps: Deps) {
     ctx: EventContext,
     data: PreparedEmail,
     logId: string,
-    reason?: string,
+    failureReason?: string,
   ): Promise<void> {
     try {
       const parsed = await mail.parse({
@@ -194,7 +194,7 @@ export function useConfirmPaymentEmail(deps: Deps) {
         subject: parsed.subject,
         preview: parsed.preview,
         html: parsed.html,
-        failure_reason: reason,
+        failure_reason: failureReason,
       });
       logger.info([
         logId,

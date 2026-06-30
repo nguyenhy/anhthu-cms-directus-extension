@@ -182,7 +182,7 @@ export function useBuyerVerificationEmail(deps: Deps) {
     ctx: EventContext,
     logId: string,
     data: PreparedEmail,
-    reason?: string,
+    failureReason?: string,
   ): Promise<void> {
     try {
       const parsed = await mail.parse({
@@ -202,7 +202,7 @@ export function useBuyerVerificationEmail(deps: Deps) {
         subject: parsed.subject,
         preview: parsed.preview,
         html: parsed.html,
-        failure_reason: reason,
+        failure_reason: failureReason,
       });
       logger.info([
         logId,
