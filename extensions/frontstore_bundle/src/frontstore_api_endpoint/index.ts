@@ -7,6 +7,7 @@ import {
   isString,
 } from "../frontstore_hook/utils/extract";
 import { buildRecordId } from "../lib/buildRecordId";
+import { buildAssetUrl } from "../lib/buildAssetUrl";
 
 export default defineEndpoint(async (router, context) => {
   const isAccountabilityGuarded = (req: unknown) => {
@@ -576,10 +577,15 @@ export default defineEndpoint(async (router, context) => {
       templateSlug: raw.template?.slug ?? "",
       thumbnail: thumbnail
         ? {
-            disk: thumbnail.filename_disk,
+            url: buildAssetUrl(thumbnail.filename_disk, context.env.PUBLIC_URL, {
+              width: 100,
+              height: 100,
+            }),
             width: thumbnail.width,
             height: thumbnail.height,
             type: thumbnail.type,
+            key: "",
+            label: "",
             ariaLabel: thumbnail.description,
           }
         : null,
@@ -608,7 +614,9 @@ export default defineEndpoint(async (router, context) => {
       paymentMethods: paymentMethods.map((pm) => ({
         name: pm.name,
         type: pm.type,
-        logoDisk: pm.logo ?? null,
+        logo: pm.logo
+          ? buildAssetUrl(pm.logo, context.env.PUBLIC_URL, { height: 400 })
+          : null,
         accountName: pm.account_name,
         accountNumber: pm.account_number,
         note: pm.note ?? null,
