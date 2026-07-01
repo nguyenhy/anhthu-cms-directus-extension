@@ -119,18 +119,11 @@ export default defineEndpoint(async (router, context) => {
         order_id: orderId,
         expired_after: 48,
         template: template.id,
-        status: "pending",
         price_at_purchase: template.product?.price ?? null,
         currency_at_purchase: template.product?.currency?.code ?? null,
         template_name_at_purchase: template.name ?? null,
         discount_amount_at_purchase: 0,
         coupon_code_at_purchase: null,
-        events: [
-          {
-            status: "pending",
-            actor: "system",
-          },
-        ],
       });
       context.logger.info(order);
       return res.status(200).json({
@@ -595,7 +588,9 @@ export default defineEndpoint(async (router, context) => {
       currency: hasSnapshot
         ? raw.currency_at_purchase!
         : (raw.template?.product?.currency ?? null),
-      subtotal: hasSnapshot ? raw.price_at_purchase! : (raw.template?.product?.price ?? 0),
+      subtotal: hasSnapshot
+        ? raw.price_at_purchase!
+        : (raw.template?.product?.price ?? 0),
       discount: hasSnapshot ? Number(raw.discount_amount_at_purchase ?? 0) : 0,
       total: hasSnapshot
         ? raw.price_at_purchase! - Number(raw.discount_amount_at_purchase ?? 0)
