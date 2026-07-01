@@ -92,8 +92,7 @@ export default defineEndpoint(async (router, context) => {
           "category.slug",
 
           "product.price",
-          "product.currency.id",
-          "product.currency.code",
+          "product.currency",
         ],
       });
     } catch (error) {
@@ -120,7 +119,7 @@ export default defineEndpoint(async (router, context) => {
         expired_after: 48,
         template: template.id,
         price_at_purchase: template.product?.price ?? null,
-        currency_at_purchase: template.product?.currency?.code ?? null,
+        currency_at_purchase: template.product?.currency ?? null,
         template_name_at_purchase: template.name ?? null,
         discount_amount_at_purchase: 0,
         coupon_code_at_purchase: null,
