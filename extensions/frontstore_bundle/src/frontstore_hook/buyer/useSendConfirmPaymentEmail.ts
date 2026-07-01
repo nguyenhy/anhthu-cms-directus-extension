@@ -28,6 +28,9 @@ type Deps = {
 type PreparedEmail = {
   to: EmailIdentity;
   variables: EmailConfirmPaymentHtmlVar;
+  /** Set when subtotal-discount doesn't match what was actually paid. When
+   * present, sendDirect skips sending and routes to manual review instead. */
+  priceMismatch?: string;
 };
 
 type OrderFulfillmentRow = {
@@ -50,6 +53,9 @@ type OrderFulfillmentRow = {
       product: { price: string; currency: string };
       category: { emoji: string; name: string; slug: string };
     };
+    price_at_purchase: number | null;
+    currency_at_purchase: string | null;
+    discount_amount_at_purchase: string | null;
   };
   user_payment: { amount: string; currency: string };
 };
@@ -75,6 +81,10 @@ const ORDER_FULFILLMENT_FIELDS = [
   "order.template.category.emoji",
   "order.template.category.name",
   "order.template.category.slug",
+
+  "order.price_at_purchase",
+  "order.currency_at_purchase",
+  "order.discount_amount_at_purchase",
 
   "user_payment.amount",
   "user_payment.currency",
@@ -118,11 +128,56 @@ export function useConfirmPaymentEmail(deps: Deps) {
     }
     logger.info([logId, "[frontstore_hook] match", match]);
 
+    // price/currency are always written together at order creation (and by
+    // the backfill). A row with only one set is corrupt, not "partially
+    // migrated" — fall back to fully-live rather than mixing the two.
+    const hasSnapshot =
+      match.order.price_at_purchase != null &&
+      match.order.currency_at_purchase != null;
+
+    let subtotal: number;
+    let currency: string;
+    let discount: number;
+
+    if (hasSnapshot) {
+      subtotal = match.order.price_at_purchase!;
+      currency = match.order.currency_at_purchase!;
+      discount = Number(match.order.discount_amount_at_purchase ?? 0);
+    } else {
+      // TODO: remove this branch (and hasSnapshot) once price_at_purchase
+      // etc. are NOT NULL — only reachable for orders predating this
+      // feature, until the backfill (scripts/backfill-order-snapshots.sql)
+      // has run and the columns are locked down. See fetchOrderDetail.ts
+      // and frontstore_api_endpoint/index.ts GET /order/:slug for the same
+      // pattern — remove all three together.
+      subtotal = +match.order.template.product.price;
+      currency = match.order.template.product.currency;
+      discount = 0;
+    }
+
+    const expectedTotal = subtotal - discount;
+    const paidAmount = +match.user_payment.amount;
+
+    // No DB constraint enforces this today. On mismatch we do not send —
+    // sending is the buyer-facing signal that payment is officially
+    // reconciled, and a wrong amount there is worse than a delay. Routed to
+    // saveRecord() for manual review instead of silently dropped, so the
+    // buyer isn't left without any record while support investigates.
+    const priceMismatch =
+      expectedTotal !== paidAmount || currency !== match.user_payment.currency
+        ? `price_mismatch: expected ${expectedTotal} ${currency}, paid ${paidAmount} ${match.user_payment.currency}`
+        : undefined;
+
+    if (priceMismatch) {
+      logger.error([logId, "[frontstore_hook]", priceMismatch, match.order.order_id]);
+    }
+
     return {
       to: {
         email: match.order.buyer.email,
         name: match.order?.buyer?.name,
       },
+      priceMismatch,
       variables: {
         YEAR: new Date().getFullYear().toString(),
         BRAND: brand,
@@ -131,15 +186,9 @@ export function useConfirmPaymentEmail(deps: Deps) {
         USER_EMAIL: match.order.buyer.email,
         ORDER_ID: match.order.order_id,
         ORDER_URL: buildSlugUrl(match.order.slug, storeUrl, orderPathFormat),
-        SUBTOTAL: formatMoney(
-          +match.order.template.product.price,
-          match.order.template.product.currency,
-        ),
-        DISCOUNT: "",
-        TOTAL_PAID: formatMoney(
-          +match.user_payment.amount,
-          match.user_payment.currency,
-        ),
+        SUBTOTAL: formatMoney(subtotal, currency),
+        DISCOUNT: discount > 0 ? formatMoney(discount, currency) : "",
+        TOTAL_PAID: formatMoney(paidAmount, match.user_payment.currency),
         DOWNLOAD_URL: buildSlugUrl(
           match.order.slug,
           storeUrl,
@@ -156,6 +205,11 @@ export function useConfirmPaymentEmail(deps: Deps) {
   ): Promise<void> {
     const data = await prepare(cmd, ctx, logId);
     if (!data) return;
+
+    if (data.priceMismatch) {
+      await saveRecord(ctx, data, logId, data.priceMismatch);
+      return;
+    }
 
     try {
       const result = await sendEmail(data.to, data.variables);
