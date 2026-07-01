@@ -120,6 +120,11 @@ export default defineEndpoint(async (router, context) => {
         expired_after: 48,
         template: template.id,
         status: "pending",
+        price_at_purchase: template.product?.price ?? null,
+        currency_at_purchase: template.product?.currency?.code ?? null,
+        template_name_at_purchase: template.name ?? null,
+        discount_amount_at_purchase: 0,
+        coupon_code_at_purchase: null,
         events: [
           {
             status: "pending",
@@ -423,6 +428,11 @@ export default defineEndpoint(async (router, context) => {
       } | null;
     } | null;
     order_fulfillment: Array<{ date_created: string }>;
+    price_at_purchase: number | null;
+    currency_at_purchase: string | null;
+    template_name_at_purchase: string | null;
+    discount_amount_at_purchase: string | null;
+    coupon_code_at_purchase: string | null;
   };
 
   type PaymentMethodItem = {
@@ -493,6 +503,12 @@ export default defineEndpoint(async (router, context) => {
           "template.category.slug",
 
           "order_fulfillment.date_created",
+
+          "price_at_purchase",
+          "currency_at_purchase",
+          "template_name_at_purchase",
+          "discount_amount_at_purchase",
+          "coupon_code_at_purchase",
         ],
         version,
       );
@@ -507,6 +523,18 @@ export default defineEndpoint(async (router, context) => {
     const deadlineAt = new Date(
       dateCreated.valueOf() + (raw.expired_after ?? 24) * 3600 * 1000,
     ).toISOString();
+
+    // price/currency/template_name are always written together at order
+    // creation (and by the backfill). A row with only some of them set is
+    // corrupt, not "partially migrated" — treat it as no snapshot at all
+    // rather than mixing snapshot and live values.
+    // TODO: once these columns are NOT NULL, delete hasSnapshot and every
+    // live-template fallback below. Same pattern in fetchOrderDetail.ts and
+    // useSendConfirmPaymentEmail.ts — remove all three together.
+    const hasSnapshot =
+      raw.price_at_purchase != null &&
+      raw.currency_at_purchase != null &&
+      raw.template_name_at_purchase != null;
 
     let paymentMethods: PaymentMethodItem[] = [];
     if (raw.buyer) {
@@ -550,7 +578,9 @@ export default defineEndpoint(async (router, context) => {
             date_created: raw.buyer.date_created ?? "",
           }
         : null,
-      templateName: raw.template?.name ?? "",
+      templateName: hasSnapshot
+        ? raw.template_name_at_purchase!
+        : (raw.template?.name ?? ""),
       templateSlug: raw.template?.slug ?? "",
       thumbnail: thumbnail
         ? {
@@ -562,11 +592,24 @@ export default defineEndpoint(async (router, context) => {
           }
         : null,
       category: raw.template?.category ?? null,
-      currency: raw.template?.product?.currency ?? null,
-      subtotal: raw.template?.product?.price ?? 0,
-      discount: 0,
-      total: raw.template?.product?.price ?? 0,
-      coupon: null,
+      currency: hasSnapshot
+        ? raw.currency_at_purchase!
+        : (raw.template?.product?.currency ?? null),
+      subtotal: hasSnapshot ? raw.price_at_purchase! : (raw.template?.product?.price ?? 0),
+      discount: hasSnapshot ? Number(raw.discount_amount_at_purchase ?? 0) : 0,
+      total: hasSnapshot
+        ? raw.price_at_purchase! - Number(raw.discount_amount_at_purchase ?? 0)
+        : (raw.template?.product?.price ?? 0),
+      // amount here is the resolved currency amount actually deducted, so
+      // type is always "fixed" regardless of the coupon's original percent
+      // vs fixed rule — cap is only meaningful pre-resolution, so omitted.
+      coupon: raw.coupon_code_at_purchase
+        ? {
+            code: raw.coupon_code_at_purchase,
+            type: "fixed" as const,
+            amount: Number(raw.discount_amount_at_purchase ?? 0),
+          }
+        : null,
       user_paid_at: raw.order_fulfillment?.[0]?.date_created ?? null,
       paymentMethods: paymentMethods.map((pm) => ({
         name: pm.name,
