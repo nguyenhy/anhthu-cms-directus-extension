@@ -171,7 +171,12 @@ export default defineEndpoint(async (router, context) => {
     rating: number | null;
     description: string | null;
     features:
-      | { label: string; icon: string | null; desc: string | null }[]
+      | {
+          label: string;
+          icon?: string | null;
+          highlight?: boolean | null;
+          desc?: string | null;
+        }[]
       | null;
     faqs: { question: string; answer: string }[] | null;
   };
