@@ -31,7 +31,7 @@ podman run -d --name prod-cms \
   -v $(pwd)/extensions:/directus/extensions \
   -e NODE_OPTIONS="--max-old-space-size=512" \
   -e NODE_ENV="development" \
-  docker.io/directus/directus
+  docker.io/directus/directus:12.0.2
 ```
 
 #### Directus Configuration
@@ -126,7 +126,7 @@ podman run -d --name prod-cms \
    -v $(pwd)/extensions:/directus/extensions \
    -e NODE_OPTIONS="--max-old-space-size=512" \
    -e NODE_ENV="development" \
-   docker.io/directus/directus
+   docker.io/directus/directus:12.0.2
 ```
 
 - `NODE_ENV="development"`: need to prevent none of `devDependencies` being install in production
