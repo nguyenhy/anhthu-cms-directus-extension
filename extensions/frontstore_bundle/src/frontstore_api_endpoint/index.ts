@@ -146,6 +146,15 @@ export default defineEndpoint(async (router, context) => {
     meta_list: unknown[] | null;
     category: { slug: string; name: string; emoji: string } | null;
     product: { price: number; currency: string } | null;
+    thumbnail: {
+      filename_disk: string;
+      width: number | null;
+      height: number | null;
+      type: string | null;
+      description: string | null;
+      key?: string | null;
+      label?: string | null;
+    } | null;
     galleries: Array<{
       directus_files_id: {
         filename_disk: string;
@@ -157,8 +166,14 @@ export default defineEndpoint(async (router, context) => {
         label?: string | null;
       };
     }>;
-    desc: unknown[];
     early_offer: unknown | null;
+
+    rating: number | null;
+    description: string | null;
+    features:
+      | { label: string; icon: string | null; desc: string | null }[]
+      | null;
+    faqs: { question: string; answer: string }[] | null;
   };
 
   router.get("/template/:slug", async (req, res) => {
@@ -197,25 +212,22 @@ export default defineEndpoint(async (router, context) => {
           "product.price",
           "product.currency",
 
+          "thumbnail.filename_disk",
+          "thumbnail.width",
+          "thumbnail.height",
+          "thumbnail.type",
+          "thumbnail.description",
+
           "galleries.directus_files_id.filename_disk",
           "galleries.directus_files_id.width",
           "galleries.directus_files_id.height",
           "galleries.directus_files_id.type",
           "galleries.directus_files_id.description",
 
-          "desc.collection",
-          "desc.item:template_desc_block_feature.section_title",
-          "desc.item:template_desc_block_feature.title",
-          "desc.item:template_desc_block_feature.desc",
-          "desc.item:template_desc_block_feature.features",
-          "desc.item:template_desc_block_card.section_title",
-          "desc.item:template_desc_block_card.title",
-          "desc.item:template_desc_block_card.note",
-          "desc.item:template_desc_block_card.note_icon",
-          "desc.item:template_desc_block_card.cards",
-          "desc.item:template_desc_block_faq.section_title",
-          "desc.item:template_desc_block_faq.title",
-          "desc.item:template_desc_block_faq.faqs",
+          "rating",
+          "description",
+          "features",
+          "faqs",
 
           "early_offer.section_title",
           "early_offer.title",
@@ -249,6 +261,31 @@ export default defineEndpoint(async (router, context) => {
     const STORAGE_S3_REGION = context.env.STORAGE_S3_REGION;
     const STORAGE_S3_ENDPOINT = context.env.STORAGE_S3_ENDPOINT;
 
+    let thumbnail = null;
+    if (raw.thumbnail) {
+      let url = "";
+      try {
+        url =
+          (await getImagePresignedUrl(raw.thumbnail.filename_disk, {
+            key: STORAGE_S3_KEY,
+            secret: STORAGE_S3_SECRET,
+            bucket: STORAGE_S3_BUCKET,
+            region: STORAGE_S3_REGION,
+            endpoint: STORAGE_S3_ENDPOINT,
+          })) ?? "";
+      } catch (error) {
+        context.logger.error(error);
+      }
+
+      thumbnail = {
+        url,
+        width: raw.thumbnail.width,
+        height: raw.thumbnail.height,
+        type: raw.thumbnail.type,
+        key: raw.thumbnail.key ?? null,
+      };
+    }
+
     for (const item of raw.galleries) {
       const file = item.directus_files_id;
       if (!file?.filename_disk) continue;
@@ -273,8 +310,6 @@ export default defineEndpoint(async (router, context) => {
         height: file.height,
         type: file.type,
         key: file.key ?? null,
-        label: file.label ?? null,
-        ariaLabel: file.description ?? null,
       });
     }
 
@@ -287,16 +322,20 @@ export default defineEndpoint(async (router, context) => {
         name: raw.category?.name ?? null,
         emoji: raw.category?.emoji ?? null,
       },
-      tagline: raw.tag_line ?? null,
       price: raw.product?.price ?? null,
       currency: raw.product?.currency ?? null,
       priceSub: raw.price_sub ?? null,
       deliveryNote: raw.delivery_note ?? null,
       compatNote: raw.compat_note ?? null,
       metaList: raw.meta_list ?? [],
+      thumbnail,
       galleryTabs,
-      description: raw.desc ?? [],
       earlyOffer: raw.early_offer ?? null,
+
+      rating: raw.rating,
+      description_html: raw.description,
+      features: raw.features,
+      faqs: raw.faqs,
     });
   });
 
@@ -577,10 +616,14 @@ export default defineEndpoint(async (router, context) => {
       templateSlug: raw.template?.slug ?? "",
       thumbnail: thumbnail
         ? {
-            url: buildAssetUrl(thumbnail.filename_disk, context.env.PUBLIC_URL, {
-              width: 100,
-              height: 100,
-            }),
+            url: buildAssetUrl(
+              thumbnail.filename_disk,
+              context.env.PUBLIC_URL,
+              {
+                width: 100,
+                height: 100,
+              },
+            ),
             width: thumbnail.width,
             height: thumbnail.height,
             type: thumbnail.type,
