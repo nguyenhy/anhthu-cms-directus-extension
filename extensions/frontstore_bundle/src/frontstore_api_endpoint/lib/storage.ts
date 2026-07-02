@@ -10,6 +10,12 @@ export const getImagePresignedUrl = async (
     region: string;
     endpoint: string;
   },
+  options?: {
+    /**
+     * The number of seconds before the presigned URL expires
+     */
+    expiresIn?: number | false;
+  },
 ) => {
   if (
     !storage.key ||
@@ -47,7 +53,10 @@ export const getImagePresignedUrl = async (
   const getUrl = await getSignedUrl(
     S3,
     new GetObjectCommand({ Bucket: storage.bucket, Key: filepath }),
-    { expiresIn: 3600 },
+    {
+      expiresIn:
+        options?.expiresIn === false ? undefined : (options?.expiresIn ?? 3600),
+    },
   );
 
   return getUrl;
